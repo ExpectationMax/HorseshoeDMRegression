@@ -58,10 +58,10 @@ class DMRegressionModel(pm.Model):
             raise ValueError('Coefficient mask must have dimensions ({}x{})'.format(self.C, self.O))
 
 
-class DMRegressionModel(pm.Model):
+class MaskableDMRegressionModel(pm.Model):
     def __init__(self, n_samples, n_covariates, n_otus, t0, nu=3, centered_lambda=True, centered_beta=True,
                  name='', mask=None, model=None):
-        super(DMRegressionModel, self).__init__(name, model)
+        super(MaskableDMRegressionModel, self).__init__(name, model)
         self.S = n_samples
         self.C = n_covariates
         self.O = n_otus
@@ -71,26 +71,32 @@ class DMRegressionModel(pm.Model):
         if mask is None:
             self.ncoefficients = self.C * self.O
         else:
-            self.ncoefficients = np.sum(mask)
+            self.ncoefficients = int(np.sum(mask))
+            self.unmasked_coefficients = np.where(mask)
 
         pm.HalfCauchy('tau', t0)
         if centered_lambda:
-            pm.HalfStudentT('lambda', nu=nu, mu=0, shape=(self.C, self.O))
+            pm.HalfStudentT('lambda', nu=nu, mu=0, shape=(self.ncoefficients,))
         else:
-            lamb_normal = pm.HalfNormal.dist(1, shape=(self.C, self.O))
-            lamb_invGamma = pm.InverseGamma.dist(0.5 * nu, 0.5 * nu, shape=(self.C, self.O))
+            lamb_normal = pm.HalfNormal.dist(1, shape=(self.ncoefficients,))
+            lamb_invGamma = pm.InverseGamma.dist(0.5 * nu, 0.5 * nu, shape=self.ncoefficients)
             pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
 
         if centered_beta:
-            pm.Normal('beta', 0, self['lambda']*self.tau, shape=(self.C, self.O))
+            prebeta = pm.Normal('prebeta', 0, self['lambda']*self.tau, shape=(self.ncoefficients,))
+            if mask is not None:
+                reshaped_beta = tt.zeros((self.C, self.O))
+                pm.Deterministic('beta', tt.set_subtensor(reshaped_beta[self.unmasked_coefficients], prebeta))
+            else:
+                pm.Deterministic('beta', tt.reshape(prebeta, (self.C, self.O)))
         else:
-            z = pm.Normal.dist(0, 1, shape=(self.C, self.O))
+            z = pm.Normal.dist(0, 1, shape=(self.ncoefficients,))
             pm.Deterministic('beta', z*self['lambda']*self.tau)
 
         self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
         pm.Normal('alpha', 0, 10, shape=self.O)
         self.intermediate = tt.exp(self.alpha[np.newaxis, :] + tt.dot(self.covariates, self.beta*self.coefficient_mask))
-        self.intermediate.name = 'intermediate'
+        #self.intermediate.name = 'intermediate'
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
 
     def set_counts_and_covariates(self, counts, covariates):

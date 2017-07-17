@@ -3,6 +3,7 @@ import math
 import dm_regression_model
 import seaborn as sns
 import pickle
+import numpy as np
 from data import get_simulated_data
 
 if __name__ == '__main__':
@@ -14,8 +15,10 @@ if __name__ == '__main__':
     sigma = 1
     t0 = (p0 / (C * O)) * (sigma / math.sqrt(S))
     print('p0 =', p0, 'sigma =', sigma, 'tau0 =', t0)
-
-    model = dm_regression_model.DMRegressionModel(S, C, O, t0)
+    mask = np.zeros((C, O), dtype=np.uint8)
+    mask[0, 0] = 1
+    mask[1, 1] = 1
+    model = dm_regression_model.MaskableDMRegressionModel(S, C, O, t0, mask=mask)
     model.set_counts_and_covariates(data['counts'], data['covariates'])
 
 
