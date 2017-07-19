@@ -31,8 +31,11 @@ class DMRegressionModel(pm.Model):
 
         self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
         pm.Normal('alpha', 0, 10, shape=self.O)
-        self.intermediate = tt.exp(self.alpha[np.newaxis, :] + tt.dot(self.covariates, self.beta*self.coefficient_mask))
-        self.intermediate.name = 'intermediate'
+        self.intermediate = tt.exp(self.alpha + tt.dot(self.covariates, self.beta*self.coefficient_mask))
+        #self.intermediate.name = 'intermediate'
+
+        #dirichlet = pm.Dirichlet('dirchlet', self.intermediate, shape=(self.S, self.O))
+        #pm.Multinomial('counts', self.n, dirichlet, shape=(self.S, self.O), observed=self.data)
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
 
     def set_counts_and_covariates(self, counts, covariates):
@@ -58,10 +61,10 @@ class DMRegressionModel(pm.Model):
             raise ValueError('Coefficient mask must have dimensions ({}x{})'.format(self.C, self.O))
 
 
-class MaskableDMRegressionModel(pm.Model):
+class MaskableDMRegressionModel(DMRegressionModel):
     def __init__(self, n_samples, n_covariates, n_otus, t0, nu=3, centered_lambda=True, centered_beta=True,
                  name='', mask=None, model=None):
-        super(MaskableDMRegressionModel, self).__init__(name, model)
+        super(DMRegressionModel, self).__init__(name, model)
         self.S = n_samples
         self.C = n_covariates
         self.O = n_otus
@@ -83,7 +86,7 @@ class MaskableDMRegressionModel(pm.Model):
             pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
 
         if centered_beta:
-            prebeta = pm.Normal('prebeta', 0, self['lambda']*self.tau, shape=(self.ncoefficients,))
+            prebeta = pm.Normal('prebeta', 0, self['lambda']*self.tau, shape=self.ncoefficients)
             if mask is not None:
                 reshaped_beta = tt.zeros((self.C, self.O))
                 pm.Deterministic('beta', tt.set_subtensor(reshaped_beta[self.unmasked_coefficients], prebeta))
@@ -95,30 +98,77 @@ class MaskableDMRegressionModel(pm.Model):
 
         self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
         pm.Normal('alpha', 0, 10, shape=self.O)
-        self.intermediate = tt.exp(self.alpha[np.newaxis, :] + tt.dot(self.covariates, self.beta*self.coefficient_mask))
+        self.intermediate = tt.exp(self.alpha + tt.dot(self.covariates, self.beta*self.coefficient_mask))
         #self.intermediate.name = 'intermediate'
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
 
-    def set_counts_and_covariates(self, counts, covariates):
-        if counts.shape[0] == covariates.shape[0]:
-            self.data.set_value(counts)
-            self.covariates.set_value(covariates)
+
+class DMRegressionModelExplicit(DMRegressionModel):
+    def __init__(self, n_samples, n_covariates, n_otus, t0, data, covariates, nu=3, centered_lambda=True, centered_beta=True,
+                 name='', model=None):
+        super(DMRegressionModel, self).__init__(name, model)
+        self.S = n_samples
+        self.C = n_covariates
+        self.O = n_otus
+        self.covariates = covariates#theano.shared(np.zeros((self.S, self.C)), 'covariates')
+        self.data = data# theano.shared(np.ones((self.S, self.O), dtype=np.uint), 'data')
+        self.n = self.data.sum(axis=1)
+        #self.n = self.S
+        pm.HalfCauchy('tau', t0)
+        if centered_lambda:
+            pm.HalfStudentT('lambda', nu=nu, mu=0, shape=(self.C, self.O))
         else:
-            raise ValueError('Counts and covariates must have same sample dimension ({} vs {})'
-                             .format(counts.shape[0], covariates.shape[0]))
+            lamb_normal = pm.HalfNormal.dist(1, shape=(self.C, self.O))
+            lamb_invGamma = pm.InverseGamma.dist(0.5 * nu, 0.5 * nu, shape=(self.C, self.O))
+            pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
 
-    def set_counts(self, counts, borrow=False):
-        data_shape = self.data.shape.eval()
-        if counts.shape[0] == data_shape[0] and counts.shape[1] == data_shape[1]:
-            self.data.set_value(counts, borrow=borrow)
+        if centered_beta:
+            pm.Normal('beta', 0, self['lambda']*self.tau, shape=(self.C, self.O))
         else:
-            raise ValueError('Counts must have same dimension ({}x{} vs {}x{})'
-                             .format(counts.shape[0], counts.shape[1], data_shape[0], data_shape[1]))
+            z = pm.Normal.dist(0, 1, shape=(self.C, self.O))
+            pm.Deterministic('beta', z*self['lambda']*self.tau)
 
-    def set_coefficient_mask(self, coefficient_mask):
-        if coefficient_mask.shape[0] == self.C and coefficient_mask.shape[1] == self.O:
-            self.coefficient_mask.set_value(coefficient_mask)
-        else:
-            raise ValueError('Coefficient mask must have dimensions ({}x{})'.format(self.C, self.O))
+        self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
+        pm.Normal('alpha', 0, 10, shape=self.O)
+        self.intermediate = tt.exp(self.alpha + tt.dot(self.covariates, self.beta*self.coefficient_mask))
+        #self.intermediate.name = 'intermediate'
+
+        dirichlet = pm.Dirichlet('dirchlet', self.intermediate, shape=(self.S, self.O))
+        pm.Multinomial('counts', self.n, dirichlet, shape=(self.S, self.O), observed=self.data)
+        #DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
 
 
+class DMRegressionModelNonsparseImplicit(DMRegressionModel):
+    def __init__(self, n_samples, n_covariates, n_otus, data, covariates, name='', model=None):
+        super(DMRegressionModel, self).__init__(name, model)
+        self.S = n_samples
+        self.C = n_covariates
+        self.O = n_otus
+        self.covariates = covariates #theano.shared(np.zeros((self.S, self.C)), 'covariates')
+        self.data = data #theano.shared(np.ones((self.S, self.O), dtype=np.uint), 'data')
+        self.n = self.data.sum(axis=1)
+
+        pm.Normal('beta', 0, 10, shape=(self.C, self.O))
+        self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
+        pm.Normal('alpha', 0, 10, shape=self.O)
+        self.intermediate = tt.exp(self.alpha + tt.dot(self.covariates, self.beta*self.coefficient_mask))
+
+        DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
+
+
+class DMRegressionModelNonsparseExplicit(DMRegressionModel):
+    def __init__(self, n_samples, n_covariates, n_otus, data, covariates, name='', model=None):
+        super(DMRegressionModel, self).__init__(name, model)
+        self.S = n_samples
+        self.C = n_covariates
+        self.O = n_otus
+        self.covariates = covariates#theano.shared(np.zeros((self.S, self.C)), 'covariates')
+        self.data = data#theano.shared(np.ones((self.S, self.O), dtype=np.uint), 'data')
+        self.n = self.data.sum(axis=1)
+
+        pm.Normal('beta', 0, 10, shape=(self.C, self.O))
+        self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
+        pm.Normal('alpha', 0, 10, shape=self.O)
+        self.intermediate = tt.exp(self.alpha + tt.dot(self.covariates, self.beta*self.coefficient_mask))
+        pm.Dirichlet('dirichlet', self.intermediate, shape=(self.S, self.O))
+        DirichletMultinomial('counts', self.n, self.dirichlet, shape=(self.S, self.O), observed=self.data)

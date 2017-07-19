@@ -178,10 +178,10 @@ def init_nuts_advi_map(n_init, njobs, rseed, model):
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='absolute'),
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='relative'),
     ]
-    start = pm.find_MAP(model=model)
-    approx = pm.MeanField(model=model, start=start)
+    #start = pm.find_MAP(model=model)
+    #approx = pm.MeanField(model=model, start=start)
     approx = pm.fit(random_seed=rseed,
-                    n=n_init, method=pm.ADVI.from_mean_field(approx), progressbar=True,
+                    n=n_init, method=pm.ADVI(), progressbar=True,
                     obj_optimizer=pm.adagrad_window(learning_rate=2e-4), total_grad_norm_constraint=10,
                     model=model, callbacks=cb
                     )
