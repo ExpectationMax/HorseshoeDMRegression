@@ -8,7 +8,7 @@ from dirichlet_multinomial import init_nuts_advi_map
 import seaborn as sns
 import pickle
 import numpy as np
-from data import get_simulated_data
+from data import get_simulated_data, get_available_datasets
 from itertools import product
 
 def traceplot_with_priors(trace, model):
@@ -59,10 +59,7 @@ if __name__ == '__main__':
     import argparse
     from joblib import Parallel, delayed
     parser = argparse.ArgumentParser()
-    parser.add_argument('datasets', nargs='+', choices=
-                        ['5O_5C_6p0_5S', '5O_5C_6p0_25S', '5O_5C_6p0_50S', '5O_5C_6p0_100S', '5O_5C_6p0_150S',
-                         '10O_10C_24p0_5S', '10O_10C_24p0_25S', '10O_10C_24p0_50S', '10O_10C_24p0_100S',
-                         '10O_10C_24p0_150S'])
+    parser.add_argument('datasets', nargs='+', choices=get_available_datasets())
     args = parser.parse_args()
     with Parallel(n_jobs=10) as parallel:
         for dataset in args.datasets:
