@@ -60,8 +60,9 @@ if __name__ == '__main__':
     from joblib import Parallel, delayed
     parser = argparse.ArgumentParser()
     parser.add_argument('datasets', nargs='+', choices=get_available_datasets())
+    parser.add_argument('--njobs', type=int, default=10)
     args = parser.parse_args()
-    with Parallel(n_jobs=10) as parallel:
+    with Parallel(n_jobs=args.njobs) as parallel:
         for dataset in args.datasets:
             outputpath = os.path.join('results', dataset)
             os.makedirs(outputpath, exist_ok=True)
@@ -88,15 +89,17 @@ if __name__ == '__main__':
             nus = [1, 2, 3]
             explicit = [True, False]
             centered = [True, False]
-            p0s = [p0, 2*p0, 3*p0]
-            sigmas = [1, 2, 3]
+            p0s = [p0, 2*p0, 3*p0, 4*p0]
+            sigma = 1
+            #sigmas = [1, 2, 3]
 
-            for nu, explicit, centered, p0, sigma in product(nus, explicit, centered, p0s, sigmas):
+            for nu, explicit, centered, p0 in product(nus, explicit, centered, p0s):
                 name = '{}_horseshoe_nu{}_{}_p0{}_s{}'.format('explicit' if explicit else 'implicit', nu, 'centered' if centered else 'noncentered', p0, sigma)
                 t0 = (p0 / (C * O)) * (sigma / math.sqrt(S))
                 print('p0 =', p0, 'sigma =', sigma, 'tau0 =', t0)
                 with open(os.path.join(outputpath, name+'_parameters.txt'), 'w') as f:
                     f.write('p0 = {}, sigma = {}, tau0 = {}'.format(p0, sigma, t0))
+
                 if explicit:
                     models[name] = dm_regression_model.DMRegressionModelExplicit(S, C, O, t0, data['counts'],
                                                                                  data['covariates'], nu=nu,
