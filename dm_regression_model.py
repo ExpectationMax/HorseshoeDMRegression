@@ -19,14 +19,14 @@ class DMRegressionModel(pm.Model):
         if centered_lambda:
             pm.HalfStudentT('lambda', nu=nu, mu=0, shape=(self.C, self.O))
         else:
-            lamb_normal = pm.HalfNormal.dist(1, shape=(self.C, self.O))
-            lamb_invGamma = pm.InverseGamma.dist(0.5 * nu, 0.5 * nu, shape=(self.C, self.O))
+            lamb_normal = pm.HalfNormal('lamb-Normal', 1, shape=(self.C, self.O))
+            lamb_invGamma = pm.InverseGamma('lamb-invGamma', 0.5 * nu, 0.5 * nu, shape=(self.C, self.O))
             pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
 
         if centered_beta:
             pm.Normal('beta', 0, self['lambda']*self.tau, shape=(self.C, self.O))
         else:
-            z = pm.Normal.dist(0, 1, shape=(self.C, self.O))
+            z = pm.Normal('z', 0, 1, shape=(self.C, self.O))
             pm.Deterministic('beta', z*self['lambda']*self.tau)
 
         self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
@@ -118,14 +118,15 @@ class DMRegressionModelExplicit(DMRegressionModel):
         if centered_lambda:
             pm.HalfStudentT('lambda', nu=nu, mu=0, shape=(self.C, self.O))
         else:
-            lamb_normal = pm.HalfNormal.dist(1, shape=(self.C, self.O))
-            lamb_invGamma = pm.InverseGamma.dist(0.5 * nu, 0.5 * nu, shape=(self.C, self.O))
+            lamb_normal = pm.HalfNormal('lamb-Normal', 1, shape=(self.C, self.O))
+            lamb_invGamma = pm.InverseGamma('lamb-invGamma', 0.5 * nu, 0.5 * nu, shape=(self.C, self.O))
+
             pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
 
         if centered_beta:
             pm.Normal('beta', 0, self['lambda']*self.tau, shape=(self.C, self.O))
         else:
-            z = pm.Normal.dist(0, 1, shape=(self.C, self.O))
+            z = pm.Normal('z',0, 1, shape=(self.C, self.O))
             pm.Deterministic('beta', z*self['lambda']*self.tau)
 
         self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
