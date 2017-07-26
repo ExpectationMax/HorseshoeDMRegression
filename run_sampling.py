@@ -28,18 +28,19 @@ def traceplot_with_priors(trace, model):
 
 def run_sampling_with_model(name, model, outputpath, rseed, njobs=1, tune=2000, draws=2000):
     print(name)
+    if os.path.isfile(os.path.join(outputpath, '{}_sampling.pck'.format(name))):
+        return
+
     with open(os.path.join(outputpath, '{}_model.pck'.format(name)), 'wb') as f:
         pickle.dump(model, f)
         print('Stored model')
     try:
         if name == 'explicit_complete' or name.startswith('explicit_horseshoe'):
-
             with model:
                     start, cov = init_nuts_advi_map(100000, njobs, rseed, model)
                     step = pm.NUTS(scaling=cov, is_cov=True, target_accept=0.9)
                     trace = pm.sample(draws=draws, tune=tune, start=start, step=step, njobs=njobs)
         else:
-
             with model:
                 trace = pm.sample(draws=draws, njobs=njobs, tune=tune, nuts_kwargs={'target_accept': 0.9},
                                   random_seed=rseed)
