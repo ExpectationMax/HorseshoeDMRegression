@@ -4,16 +4,19 @@ from pymc3.step_methods.hmc import quadpotential
 from pymc3.variational.callbacks import Callback
 
 class EarlyStopping(Callback):
-    def __init__(self, every=100, tolerance=1e-2):
+    def __init__(self, every=100, tolerance=5e-2):
         self.every = every
         self.min = None
         self.tolerance = tolerance
+
 
     def __call__(self, _, scores, i):
         if self.min is None:
             self.min = scores[max(0, i - 1000):i + 1].mean()
             return
         if i % self.every or i < self.every:
+            return
+        if i < 1000:
             return
         current = scores[max(0, i - 1000):i + 1].mean()
 
