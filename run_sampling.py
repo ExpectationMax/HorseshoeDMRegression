@@ -5,12 +5,12 @@ import pymc3 as pm
 import os
 import math
 import dm_regression_model
-from dirichlet_multinomial import init_nuts_advi_map
 import seaborn as sns
 import pickle
 import numpy as np
 from data import get_simulated_data, get_available_datasets
 from itertools import product
+from fitting_utils import init_nuts
 
 def traceplot_with_priors(trace, model):
     selected_vars = [varname for varname in model.named_vars.keys() if varname in trace.varnames and not varname.endswith('__') and hasattr(model, varname) and hasattr(model[varname], 'distribution')]
@@ -42,8 +42,8 @@ def run_sampling_with_model(name, model, outputpath, rseed, njobs=1, tune=2000, 
         #            trace = pm.sample(draws=draws, tune=tune, start=start, step=step, njobs=njobs)
         #else:
         with model:
-            trace = pm.sample(draws=draws, njobs=njobs, tune=tune, nuts_kwargs={'target_accept': 0.9},
-                              random_seed=rseed)
+            start, step = init_nuts(njobs, random_seed=rseed, target_accept=0.9)
+            trace = pm.sample(draws=draws, njobs=njobs, tune=tune, start=start, step=step, random_seed=rseed)
 
     except Exception as e:
         print('Error occured:', e)
@@ -91,7 +91,7 @@ if __name__ == '__main__':
             nus = [1, 2, 3]
             explicit = [True, False]
             centered = [True, False]
-            p0s = [p0, 2*p0, 3*p0, 4*p0]
+            p0s = [p0, 2*p0, 3*p0]
             sigma = 1
             #sigmas = [1, 2, 3]
 

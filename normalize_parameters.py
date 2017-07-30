@@ -1,8 +1,13 @@
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import os
+
 import pickle
 from glob import glob
 import pandas as pd
 import numpy as np
+import pymc3 as pm
 from data import get_simulated_data
 
 
@@ -26,8 +31,9 @@ def get_sucessful_runs(dataset):
     return datafiles
 
 
-def create_performance_dataframe(datasets, variables, compute_ra_performance=True): #derived_variables={}):
+def create_performance_dataframe(datasets, variables, compute_ra_performance=True, save_traceplot=True): #derived_variables={}):
     result = pd.DataFrame(columns=['Dataset', 'Model', 'Variable', 'Groundtruth', 'Prediction (mean)', 'Prediction (std)'])
+    statistics = pd.DataFrame(columns=['Dataset', 'Model', 'depth', 'diverging', 'mean_tree_accept', 'step_size', 'tree_size'])
     for dataset in datasets:
         data = get_simulated_data(dataset)
         models = get_sucessful_runs(dataset)
@@ -38,6 +44,13 @@ def create_performance_dataframe(datasets, variables, compute_ra_performance=Tru
             except:
                 print('Error')
                 continue
+
+            stats = pd.Series({'Dataset': dataset, 'Model': model, 'depth': trace.get_sampler_stats('depth').mean(),
+                                  'diverging': trace.get_sampler_stats('diverging').sum(),
+                                  'mean_tree_accept': trace.get_sampler_stats('mean_tree_accept').mean(),
+                                  'step_size': trace.get_sampler_stats('step_size').mean(),
+                                  'tree_size': trace.get_sampler_stats('mean_tree_accept').mean()})
+            statistics = statistics.append(stats, ignore_index=True)
 
             for var in variables:
                 means = trace[var].mean(axis=0)
@@ -63,13 +76,26 @@ def create_performance_dataframe(datasets, variables, compute_ra_performance=Tru
                      'Prediction (mean)': means.flatten(),
                      'Prediction (std)': stds.flatten()})
                 result = result.append(r, ignore_index=True)
+
+            if save_traceplot:
+                os.makedirs('traceplots', exist_ok=True)
+                try:
+                    # Complete models do not have tau
+                    pm.traceplot(trace, variables + ['tau'])
+                except:
+                    pm.traceplot(trace, variables)
+                finally:
+                    plt.savefig(os.path.join('traceplots', '{}-{}-traceplot.pdf'.format(dataset, model)))
+                plt.close('all')
+
             del trace
-    return result
+    return result, statistics
 
 if __name__ == '__main__':
     from data import get_available_datasets
     #models = ['explicit_horseshoe_nu1', 'explicit_horseshoe_nu3', 'implicit_horseshoe_nu1', 'implicit_horseshoe_nu3',
     #          'explicit_complete', 'implicit_complete']
-    res = create_performance_dataframe(get_available_datasets(), ['alpha','beta'])
+    res, stats = create_performance_dataframe(get_available_datasets(), ['alpha','beta'])
     res.to_pickle('performance_comparison.pck')
+    stats.to_pickle('sampler_statistics.pck')
     print()
