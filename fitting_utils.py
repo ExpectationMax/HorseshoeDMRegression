@@ -4,10 +4,12 @@ from pymc3.step_methods.hmc import quadpotential
 from pymc3.variational.callbacks import Callback
 
 class EarlyStopping(Callback):
-    def __init__(self, every=100, tolerance=5e-2):
+    def __init__(self, every=100, tolerance=5e-2, patience=20):
         self.every = every
         self.min = None
         self.tolerance = tolerance
+        self.patience = patience
+        self.patience_count = 0
 
 
     def __call__(self, _, scores, i):
@@ -22,7 +24,10 @@ class EarlyStopping(Callback):
 
         if current < self.min:
             self.min = current
+            self.patience_count = 0
         elif (current - self.min) > self.tolerance*self.min:
+            self.patience_count += 1
+            if self.patience_count > self.patience:
                 raise StopIteration('Stopping fitting at %d due to increasing loss.' % i)
 
 
@@ -36,7 +41,7 @@ def init_nuts(njobs=1, n_init=200000, model=None,
         raise ValueError('init_nuts can only be used for models with only '
                          'continuous variables.')
 
-    pm._log.info('Initializing NUTS using advi+adapt_diag...')
+    pm._log.info('Initializing NUTS using map+advi+adapt_diag...')
 
     random_seed = int(np.atleast_1d(random_seed)[0])
 
@@ -45,9 +50,11 @@ def init_nuts(njobs=1, n_init=200000, model=None,
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='relative'),
         EarlyStopping(tolerance=1e-2)
     ]
+    start = pm.find_MAP()
+    approx = pm.MeanField(model=model, start=start)
     approx = pm.fit(
         random_seed=random_seed,
-        n=n_init, method='advi', model=model,
+        n=n_init, method=pm.ADVI.from_mean_field(approx), model=model,
         callbacks=cb,
         progressbar=progressbar,
         obj_optimizer=pm.adagrad_window,
