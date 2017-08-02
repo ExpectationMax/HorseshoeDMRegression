@@ -16,14 +16,31 @@ class DirichletMultinomial(pm.Discrete):
 
         if a.ndim == 1:
             self.alphas = tt.as_tensor_variable(a[np.newaxis, :])  # alphas[1, #classes]
-            self.A = tt.as_tensor_variable(a.sum(axis=-1))  # A is scalar
-            self.mean = self.n * (self.alphas / self.A)
         else:
-            self.alphas = tt.as_tensor_variable(a)  # alphas[1, #classes]
-            self.A = tt.as_tensor_variable(a.sum(axis=-1, keepdims=True))  # A[#samples, 1]
-            self.mean = self.n * (self.alphas / self.A)
+            self.alphas = tt.as_tensor_variable(a)  # alphas[#samples, #classes]
+
+        self.A = self.alphas.sum(axis=-1, keepdims=True)  # A[#samples]
+        self.mean = self.n * (self.alphas / self.A)
 
         self.mode = tt.cast(pm.math.tround(self.mean), 'int32')
+
+    def logp(self, value):
+        printing = False
+        k = self.K
+        a = self.alphas
+        A = self.A
+        n = self.n
+        res = bound(tt.squeeze(factln(n) + gammaln(A) - gammaln(A + n) +
+                               tt.sum(gammaln(a + value) - gammaln(a) - factln(value), keepdims=True, axis=-1)),
+                    tt.all(value >= 0),
+                    tt.all(tt.eq(tt.sum(value, axis=-1, keepdims=True), n)),
+                    tt.all(a > 0),
+                    k > 1,
+                    tt.all(tt.ge(n, 0)),
+                    broadcast_conditions=False
+                    )
+        return res
+
 
     def _random(self, n, alphas, size=None):
         n = np.squeeze(n)
@@ -44,37 +61,6 @@ class DirichletMultinomial(pm.Discrete):
                                    size=size)
         return samples
 
-    def logp(self, value):
-        k = self.K
-        a = self.alphas
-        # res = bound(
-        #     tt.sum(
-        #         factln(self.n) + gammaln(self.A) - gammaln(self.A + self.n)
-        #         + tt.sum(
-        #             gammaln(self.alphas + value) - factln(value) - gammaln(self.alphas), axis=-1
-        #         )
-        #     ),
-        #     tt.all(value >= 0),
-        #     tt.all(tt.eq(tt.sum(value, axis=-1, keepdims=True), self.n)),
-        #     tt.all(a > 0),
-        #     k > 1,
-        #     tt.all(tt.ge(self.n, 0)),
-        #     broadcast_conditions=False
-        # )
-        res = bound(tt.sum(
-                gammaln(self.A) - gammaln(self.A + self.n)
-                + tt.sum(
-                    gammaln(self.alphas + value) - gammaln(self.alphas), axis=-1
-                ), axis=-1),
-            tt.all(value >= 0),
-            tt.all(tt.eq(tt.sum(value, axis=-1, keepdims=True), self.n)),
-            tt.all(a > 0),
-            k > 1,
-            tt.all(tt.ge(self.n, 0), axis=-1),
-            broadcast_conditions=False
-        )
-
-        return res #tt.printing.Print('logp')(res)
 
     def _repr_latex_(self, name=None, dist=None):
         if dist is None:
