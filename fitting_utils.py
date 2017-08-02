@@ -32,7 +32,7 @@ class EarlyStopping(Callback):
 
 
 def init_nuts(njobs=1, n_init=200000, model=None,
-              random_seed=-1, progressbar=True, **kwargs):
+              random_seed=-1, progressbar=True, start_at_map=False, **kwargs):
     model = pm.modelcontext(model)
     vars = kwargs.get('vars', model.vars)
     if set(vars) != set(model.vars):
@@ -50,11 +50,17 @@ def init_nuts(njobs=1, n_init=200000, model=None,
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='relative'),
         EarlyStopping(tolerance=1e-2)
     ]
-    start = pm.find_MAP()
-    approx = pm.MeanField(model=model, start=start)
+
+    if start_at_map:
+        start = pm.find_MAP()
+        approx = pm.MeanField(model=model, start=start)
+        method = pm.ADVI.from_mean_field(approx)
+    else:
+        method='advi'
+
     approx = pm.fit(
         random_seed=random_seed,
-        n=n_init, method=pm.ADVI.from_mean_field(approx), model=model,
+        n=n_init, method=method, model=model,
         callbacks=cb,
         progressbar=progressbar,
         obj_optimizer=pm.adagrad_window,
