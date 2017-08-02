@@ -4,7 +4,7 @@ from pymc3.step_methods.hmc import quadpotential
 from pymc3.variational.callbacks import Callback
 
 class EarlyStopping(Callback):
-    def __init__(self, every=100, tolerance=5e-2, patience=20):
+    def __init__(self, every=100, tolerance=1e-2, patience=60):
         self.every = every
         self.min = None
         self.tolerance = tolerance
