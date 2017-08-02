@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pymc3 as pm
 from pymc3.distributions import generate_samples, draw_values
 from pymc3.distributions.dist_math import gammaln, bound, factln
-import theano
+from pymc3.util import get_variable_name
 import theano.tensor as tt
 import numpy as np
 
@@ -66,8 +66,7 @@ class DirichletMultinomial(pm.Discrete):
         if dist is None:
             dist = self
         a = dist.a
-        return r'${} \sim \text{{Dirichlet}}(\mathit{{a}}={})$'.format(name,
-                                                                       get_variable_name(a))
+        return r'${} \sim \text{{Dirichlet}}(\mathit{{a}}={})$'.format(name, get_variable_name(a))
 
 
 def run_explicit_model_gamma(data, random_seed):

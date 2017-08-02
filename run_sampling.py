@@ -83,34 +83,23 @@ if __name__ == '__main__':
             models['implicit_complete'] = dm_regression_model.DMRegressionModelNonsparseImplicit(S, C, O,
                                                                                                  data['counts'],
                                                                                                  data['covariates'])
-            ##models['implicit_complete'].set_counts_and_covariates(data['counts'], data['covariates'])
-            models['explicit_complete'] = dm_regression_model.DMRegressionModelNonsparseExplicit(S, C, O,
-                                                                                                 data['counts'],
-                                                                                                 data['covariates'])
 
             nus = [1, 2, 3]
-            explicit = [True, False]
             centered = [True, False]
             p0s = [p0, 2*p0, 3*p0]
             sigma = 1
             #sigmas = [1, 2, 3]
 
-            for nu, explicit, centered, p0 in product(nus, explicit, centered, p0s):
-                name = '{}_horseshoe_nu{}_{}_p0{}_s{}'.format('explicit' if explicit else 'implicit', nu, 'centered' if centered else 'noncentered', p0, sigma)
+            for nu, explicit, centered, p0 in product(nus, centered, p0s):
+                name = 'horseshoe_nu{}_{}_p0{}'.format('explicit' if explicit else 'implicit', nu, 'centered' if centered else 'noncentered', p0)
                 t0 = (p0 / (C * O)) * (sigma / math.sqrt(S))
-                print('p0 =', p0, 'sigma =', sigma, 'tau0 =', t0)
+                print('p0 =', p0, 'sigma =', sigma, 'tau0 =', t0, 'C =', C, 'O = ', O, 'S = ', S)
                 with open(os.path.join(outputpath, name+'_parameters.txt'), 'w') as f:
                     f.write('p0 = {}, sigma = {}, tau0 = {}'.format(p0, sigma, t0))
 
-                if explicit:
-                    models[name] = dm_regression_model.DMRegressionModelExplicit(S, C, O, t0, data['counts'],
-                                                                                 data['covariates'], nu=nu,
-                                                                                 centered_beta=centered,
-                                                                                 centered_lambda=centered)
-                else:
-                    models[name] = dm_regression_model.DMRegressionModel(S, C, O, t0, nu=nu, centered_beta=centered,
-                                                                         centered_lambda=centered)
-                    models[name].set_counts_and_covariates(data['counts'].astype(np.uint), data['covariates'])
+                models[name] = dm_regression_model.DMRegressionModel(S, C, O, t0, nu=nu, centered_beta=centered,
+                                                                     centered_lambda=centered)
+                models[name].set_counts_and_covariates(data['counts'].astype(np.uint), data['covariates'])
 
             parallel(delayed(run_sampling_with_model)(name, model, outputpath, rseed) for name, model in models.items())
 
