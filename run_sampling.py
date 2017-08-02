@@ -85,20 +85,21 @@ if __name__ == '__main__':
                                                                                                  data['covariates'])
 
             nus = [1, 2, 3]
-            centered = [True, False]
-            p0s = [p0, 2*p0, 3*p0]
+            centereds = [True, False]
+            cauchys = [True, False]
+            p0s = [p0, p0*2, p0*3]
+
             sigma = 1
             #sigmas = [1, 2, 3]
 
-            for nu, explicit, centered, p0 in product(nus, centered, p0s):
-                name = 'horseshoe_nu{}_{}_p0{}'.format('explicit' if explicit else 'implicit', nu, 'centered' if centered else 'noncentered', p0)
+            for nu, centered, cauchy, p0 in product(nus, centereds, cauchys, p0s):
+                name = 'horseshoe_nu{}_{}_{}_p0{}'.format(nu, 'centered' if centered else 'noncentered', 'caunchy' if cauchy else 'normal', p0)
                 t0 = (p0 / (C * O)) * (sigma / math.sqrt(S))
-                print('p0 =', p0, 'sigma =', sigma, 'tau0 =', t0, 'C =', C, 'O = ', O, 'S = ', S)
+                print('p0 =', p0, 'sigma =', sigma, 'tau0 =', t0, 'C =', C, 'O = ', O, 'S = ', S, 'nu =', nu, 'cauchy =', cauchy)
                 with open(os.path.join(outputpath, name+'_parameters.txt'), 'w') as f:
                     f.write('p0 = {}, sigma = {}, tau0 = {}'.format(p0, sigma, t0))
 
-                models[name] = dm_regression_model.DMRegressionModel(S, C, O, t0, nu=nu, centered_beta=centered,
-                                                                     centered_lambda=centered)
+                models[name] = dm_regression_model.DMRegressionModel(S, C, O, t0, nu=nu, centered=centered, cauchy=cauchy)
                 models[name].set_counts_and_covariates(data['counts'].astype(np.uint), data['covariates'])
 
             parallel(delayed(run_sampling_with_model)(name, model, outputpath, rseed) for name, model in models.items())
