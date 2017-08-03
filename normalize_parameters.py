@@ -91,11 +91,52 @@ def create_performance_dataframe(datasets, variables, compute_ra_performance=Tru
             del trace
     return result, statistics
 
+
+model_lookup = {}
+def split_modelname_into_parameters(data):
+    model_parameters = ['Type', 'Nu', 'Parametrization', 'Hyperprior', 'Model p0']
+    def split_model_name(modelname):
+        if modelname in model_lookup.keys():
+            return model_lookup[modelname]
+        fragments = modelname.split('_')
+        if len(fragments) == 2:
+            ret = pd.Series(index=model_parameters, data=[fragments[0], '', '', '', ''])
+        else:
+            ret = pd.Series(index=model_parameters, data=[fragments[0], int(fragments[1]), fragments[2], int(fragments[3])])
+        model_lookup[modelname] = ret
+        return ret
+
+    return model_parameters, data.apply(split_model_name)
+
+
+dataset_lookup = {}
+def split_datasetname_into_parameters(data):
+    dataset_parameters = ['OTUs', 'Covariates', 'Data p0', 'Samples']
+    def split_dataset_name(dataset):
+        if dataset in dataset_lookup.keys():
+            return dataset_lookup[dataset]
+        frags = dataset.split('_')
+        ret = pd.Series(index=dataset_parameters,
+                        data=[int(frags[0][:-1]), int(frags[1][:-1]), int(frags[2][:-2]), int(frags[3][:-1])])
+        dataset_lookup[dataset] = ret
+        return ret
+
+    return dataset_parameters, data.apply(split_dataset_name)
+
+
 if __name__ == '__main__':
     from data import get_available_datasets
     #models = ['explicit_horseshoe_nu1', 'explicit_horseshoe_nu3', 'implicit_horseshoe_nu1', 'implicit_horseshoe_nu3',
     #          'explicit_complete', 'implicit_complete']
     res, stats = create_performance_dataframe(get_available_datasets(), ['alpha','beta'])
+    _, res_model_details = split_modelname_into_parameters(res['Model'])
+    _, res_dataset_details = split_datasetname_into_parameters(res['Dataset'])
+    res = pd.concat([res_dataset_details, res_model_details, res], axis=1)
+
+    _, stats_model_details = split_modelname_into_parameters(stats['Model'])
+    _, stats_dataset_details = split_datasetname_into_parameters(stats['Dataset'])
+    stats = pd.concat([stats_dataset_details, stats_model_details, stats], axis=1)
+
     res.to_pickle('performance_comparison.pck')
     stats.to_pickle('sampler_statistics.pck')
     print()
