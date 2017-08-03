@@ -41,8 +41,8 @@ def create_performance_dataframe(datasets, variables, compute_ra_performance=Tru
             print(dataset, model)
             try:
                 trace = get_model_data(dataset, model)
-            except:
-                print('Error')
+            except Exception as e:
+                print('Error', e)
                 continue
 
             stats = pd.Series({'Dataset': dataset, 'Model': model, 'depth': trace.get_sampler_stats('depth').mean(),
@@ -102,7 +102,7 @@ def split_modelname_into_parameters(data):
         if len(fragments) == 2:
             ret = pd.Series(index=model_parameters, data=[fragments[0], '', '', '', ''])
         else:
-            ret = pd.Series(index=model_parameters, data=[fragments[0], int(fragments[1]), fragments[2], int(fragments[3])])
+            ret = pd.Series(index=model_parameters, data=[fragments[0], int(fragments[1][2:]), fragments[2], fragments[3], int(fragments[4][2:])])
         model_lookup[modelname] = ret
         return ret
 
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     from data import get_available_datasets
     #models = ['explicit_horseshoe_nu1', 'explicit_horseshoe_nu3', 'implicit_horseshoe_nu1', 'implicit_horseshoe_nu3',
     #          'explicit_complete', 'implicit_complete']
-    res, stats = create_performance_dataframe(get_available_datasets(), ['alpha','beta'])
+    res, stats = create_performance_dataframe(get_available_datasets()[:3], ['alpha','beta'])
     _, res_model_details = split_modelname_into_parameters(res['Model'])
     _, res_dataset_details = split_datasetname_into_parameters(res['Dataset'])
     res = pd.concat([res_dataset_details, res_model_details, res], axis=1)
