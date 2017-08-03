@@ -21,7 +21,7 @@ class DMRegressionModel(pm.Model):
             else:
                 tau_normal = pm.HalfNormal('tau-normal', t0)
                 tau_invGamma = pm.InverseGamma('tau-invGamma', 0.5, 0.5, testval=(0.5/(0.5+1)))
-                pm.Deterministic('tau', tau_normal*tau_invGamma)
+                pm.Deterministic('tau', tau_normal*tt.sqrt(tau_invGamma))
         else:
             pm.HalfNormal('tau', t0)
 
