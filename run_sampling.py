@@ -87,7 +87,7 @@ if __name__ == '__main__':
             nus = [1, 2, 3]
             centereds = [True, False]
             cauchys = [True, False]
-            p0s = [p0, p0*2, p0*3]
+            p0s = [p0]
 
             sigma = 1
             #sigmas = [1, 2, 3]
