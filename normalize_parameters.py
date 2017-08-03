@@ -49,7 +49,7 @@ def create_performance_dataframe(datasets, variables, compute_ra_performance=Tru
                                   'diverging': trace.get_sampler_stats('diverging').sum(),
                                   'mean_tree_accept': trace.get_sampler_stats('mean_tree_accept').mean(),
                                   'step_size': trace.get_sampler_stats('step_size').mean(),
-                                  'tree_size': trace.get_sampler_stats('mean_tree_accept').mean()})
+                                  'tree_size': trace.get_sampler_stats('tree_size').mean()})
             statistics = statistics.append(stats, ignore_index=True)
 
             for var in variables:
