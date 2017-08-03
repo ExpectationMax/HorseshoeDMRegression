@@ -53,7 +53,7 @@ def run_sampling_with_model(name, model, outputpath, rseed, njobs=1, tune=2000, 
         pickle.dump(trace, f)
         print('Stored trace')
 
-    pm.traceplot(trace)
+    pm.traceplot(trace, ['alpha', 'tau', 'beta'])
     sns.plt.savefig(os.path.join(outputpath, '{}_traceplot.pdf'.format(name)))
 
 
