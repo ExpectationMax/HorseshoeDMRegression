@@ -93,7 +93,7 @@ if __name__ == '__main__':
             #sigmas = [1, 2, 3]
 
             for nu, centered, cauchy, p0 in product(nus, centereds, cauchys, p0s):
-                name = 'horseshoe_nu{}_{}_{}_p0{}'.format(nu, 'centered' if centered else 'noncentered', 'caunchy' if cauchy else 'normal', p0)
+                name = 'horseshoe_nu{}_{}_{}_p0{}'.format(nu, 'centered' if centered else 'noncentered', 'cauchy' if cauchy else 'normal', p0)
                 t0 = (p0 / (C * O)) * (sigma / math.sqrt(S))
                 print('p0 =', p0, 'sigma =', sigma, 'tau0 =', t0, 'C =', C, 'O = ', O, 'S = ', S, 'nu =', nu, 'cauchy =', cauchy)
                 with open(os.path.join(outputpath, name+'_parameters.txt'), 'w') as f:
