@@ -2,7 +2,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
-
+import logging
+logging.basicConfig(level=logging.DEBUG)
 import pickle
 from glob import glob
 import pandas as pd
@@ -34,15 +35,17 @@ def get_sucessful_runs(dataset):
 def create_performance_dataframe(datasets, variables, compute_ra_performance=True, save_traceplot=True): #derived_variables={}):
     result = pd.DataFrame(columns=['Dataset', 'Model', 'Variable', 'Groundtruth', 'Prediction (mean)', 'Prediction (std)'])
     statistics = pd.DataFrame(columns=['Dataset', 'Model', 'depth', 'diverging', 'mean_tree_accept', 'step_size', 'tree_size'])
+    failed = []
     for dataset in datasets:
         data = get_simulated_data(dataset)
         models = get_sucessful_runs(dataset)
         for model in models:
-            print(dataset, model)
+            logging.info('Dataset: %s, Model: %s',dataset, model)
             try:
                 trace = get_model_data(dataset, model)
             except Exception as e:
-                print('Error', e)
+                failed.append((dataset, model))
+                logging.error('Error while processing (Dataset: %s, Model: %s):\n%s', dataset, model, e)
                 continue
 
             stats = pd.Series({'Dataset': dataset, 'Model': model, 'depth': trace.get_sampler_stats('depth').mean(),
@@ -89,7 +92,7 @@ def create_performance_dataframe(datasets, variables, compute_ra_performance=Tru
                 plt.close('all')
 
             del trace
-    return result, statistics
+    return failed, result, statistics
 
 
 model_lookup = {}
@@ -128,7 +131,9 @@ if __name__ == '__main__':
     from data import get_available_datasets
     #models = ['explicit_horseshoe_nu1', 'explicit_horseshoe_nu3', 'implicit_horseshoe_nu1', 'implicit_horseshoe_nu3',
     #          'explicit_complete', 'implicit_complete']
-    res, stats = create_performance_dataframe(get_available_datasets()[:3], ['alpha','beta'])
+    failed, res, stats = create_performance_dataframe(get_available_datasets(), ['alpha','beta'])
+    print('Failed datasets:')
+    print(failed)
     _, res_model_details = split_modelname_into_parameters(res['Model'])
     _, res_dataset_details = split_datasetname_into_parameters(res['Dataset'])
     res = pd.concat([res_dataset_details, res_model_details, res], axis=1)
@@ -139,4 +144,3 @@ if __name__ == '__main__':
 
     res.to_pickle('performance_comparison.pck')
     stats.to_pickle('sampler_statistics.pck')
-    print()
