@@ -103,7 +103,7 @@ def split_modelname_into_parameters(data):
             return model_lookup[modelname]
         fragments = modelname.split('_')
         if len(fragments) == 2:
-            ret = pd.Series(index=model_parameters, data=[fragments[0], '', '', '', ''])
+            ret = pd.Series(index=model_parameters, data=[fragments[1], '', '', '', ''])
         else:
             ret = pd.Series(index=model_parameters, data=[fragments[0], int(fragments[1][2:]), fragments[2], fragments[3], int(fragments[4][2:])])
         model_lookup[modelname] = ret
