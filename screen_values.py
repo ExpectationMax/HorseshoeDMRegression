@@ -10,7 +10,7 @@ import pickle
 import numpy as np
 from data import get_simulated_data, get_available_datasets
 from itertools import product
-from fitting_utils import init_nuts
+from utils import init_nuts
 
 def traceplot_with_priors(trace, model):
     selected_vars = [varname for varname in model.named_vars.keys() if varname in trace.varnames and not varname.endswith('__') and hasattr(model, varname) and hasattr(model[varname], 'distribution')]
