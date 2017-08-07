@@ -178,7 +178,7 @@ def run_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed):
     model.set_counts_and_covariates(countdata, metadata)
     try:
         with model:
-            start, step = init_nuts(njobs=n_chains,n_init=6000, random_seed=seeds)
+            start, step = init_nuts(njobs=n_chains, random_seed=seeds)
             trace = pm.sample(n_draws, tune=n_tune, start=start, step=step, njobs=n_chains, random_seed=seeds)
     except Exception as e:
         sampling_logger.error('Error during initialisation or sampling:')
