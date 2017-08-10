@@ -5,7 +5,7 @@ def get_input_specs(countdata, metadata):
 
 
 def extract_taxa_and_covariates(countdata, metadata):
-    taxa = countdata.index.tolist()
+    taxa = countdata.columns.tolist()
     covariates = metadata.columns.tolist()
     return taxa, covariates
 

@@ -19,6 +19,9 @@ class DMRegressionModel(pm.Model):
             alpha_init=np.full(self.O, 0)
         if beta_init is None:
             beta_init=np.full((self.C, self.O), 0)
+            z_init = np.full((self.C, self.O), 0)
+        else:
+            z_init = beta_init/beta_init.std()
 
         if cauchy:
             if centered:
@@ -40,7 +43,7 @@ class DMRegressionModel(pm.Model):
         if centered:
             pm.Normal('beta', 0, self['lambda']*self.tau, shape=(self.C, self.O), testval=beta_init)
         else:
-            z = pm.Normal('z', 0, 1, shape=(self.C, self.O), testval=beta_init/beta_init.std())
+            z = pm.Normal('z', 0, 1, shape=(self.C, self.O), testval=z_init)
             pm.Deterministic('beta', z*self['lambda']*self.tau)
 
         self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')

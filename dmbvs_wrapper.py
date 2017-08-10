@@ -31,23 +31,6 @@ def scale(data):
     return (data - data.mean())/data.std()
 
 
-def bfdr(inclusion_probabilities, threshold):
-    assert np.all(inclusion_probabilities < 1) and np.all(inclusion_probabilities > 0)
-    assert 0 < threshold < 1
-
-    onek = ((1 - inclusion_probabilities) < threshold).astype(float)
-
-    # possible to select none
-    if np.sum(onek) == 0:
-        selected = np.full(len(onek), False)
-        thecut = 0
-    else:
-        thecut = np.sum((1 - inclusion_probabilities) * onek) / sum(onek)
-        selected = (1 - inclusion_probabilities) < thecut
-
-    return selected, 1 - thecut
-
-
 def run_dmbvs(metadata, countdata, GG, thin, burn, output_location, intercept_variance=10, slab_variance=10,
               bb_alpha=0.02, bb_beta=1.98, proposal_alpha = 0.5, proposal_beta = 0.5,
               executable = os.path.join("lib","dmbvs.x"), r_seed = None, cleanup=True):
