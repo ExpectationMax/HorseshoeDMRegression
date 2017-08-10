@@ -79,6 +79,7 @@ def get_cli_parser():
     sampling_group.add_argument('--n_tune', type=int, default=2000)
     sampling_group.add_argument('--n_draws', type=int, default=2000)
     sampling_group.add_argument('--seed', type=int, default=-1)
+    sampling_group.add_argument('--model_type', default='DMRegression', choices=['DMRegression', 'MvNormalDMRegression'])
 
     output_group = parser.add_argument_group('Output options')
     output_group.add_argument('--traceplot', action='store_true', default=False)
@@ -91,7 +92,8 @@ def get_cli_parser():
 def get_parameter_directories(args):
     required_options = {'countdata': args.countdata, 'metadata': args.metadata,
                         'estimated_covariates': args.estimated_covariates, 'output':args.output}
-    sampling_options = {'n_chains': args.n_chains, 'n_tune':args.n_tune, 'n_draws':args.n_draws, 'seed': args.seed, 'init':args.init}
+    sampling_options = {'n_chains': args.n_chains, 'n_tune':args.n_tune, 'n_draws':args.n_draws, 'seed': args.seed,
+                        'init':args.init, 'modeltype':args.modeltype}
     output_options = {'traceplot': args.traceplot, 'save_model': args.save_model, 'save_trace':args.save_trace}
     return required_options, sampling_options, output_options
 

@@ -5,9 +5,9 @@ from pymc3.step_methods.hmc import quadpotential
 from pymc3.variational.callbacks import Callback
 
 from .data import get_input_specs
-from dmbvs_wrapper import compute_alpha_init, compute_beta_init
+from dmbvs_wrapper import compute_alpha_init, compute_beta_init, scale
 
-def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, init):
+def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, init, modeltype):
     import dm_regression_model
 
     O, C, S = get_input_specs(countdata.T, metadata)
@@ -24,11 +24,15 @@ def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, i
     rseed, seeds = get_random_seeds(seed, n_chains)
     sampling_logger.info('Random seed used for sampling: %i', rseed)
 
-    alpha_init = compute_alpha_init(countdata)
+    alpha_init = scale(compute_alpha_init(countdata))
     beta_init = compute_beta_init(countdata, metadata)
 
-    model = dm_regression_model.DMRegressionModel(S, C, O, tau0, nu=nu, centered=False, alpha_init=alpha_init.values,
-                                                  beta_init=beta_init.T.values)
+    #model = dm_regression_model.DMRegressionModel(S, C, O, tau0, nu=nu, centered=False, alpha_init=alpha_init.values, beta_init=beta_init.T.values)
+    if modeltype == 'DMRegression':
+        model = dm_regression_model.DMRegressionModel(S, C, O, 1, nu=nu, centered=False, alpha_init=alpha_init.values, beta_init=beta_init.T.values)
+    elif modeltype == 'MvNormalDMRegression':
+        model = dm_regression_model.DMRegressionMVNormalModel(S, C, O, tau0, nu=nu, centered=False)
+
     model.set_counts_and_covariates(countdata, metadata)
     try:
         with model:
@@ -100,14 +104,14 @@ def init_nuts(njobs=1, n_init=200000, model=None,
         raise ValueError('init_nuts can only be used for models with only '
                          'continuous variables.')
 
-    pm._log.info('Initializing NUTS using map+advi+adapt_diag...')
+    pm._log.info('Initializing NUTS using advi+adapt_diag...')
 
     random_seed = int(np.atleast_1d(random_seed)[0])
 
     cb = [
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='absolute'),
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='relative'),
-    #    EarlyStopping(tolerance=1e-2)
+        EarlyStopping(tolerance=1e-2)
     ]
 
     if start_at_map:
@@ -122,7 +126,7 @@ def init_nuts(njobs=1, n_init=200000, model=None,
         n=n_init, method=method, model=model,
         callbacks=cb,
         progressbar=progressbar,
-        obj_optimizer=pm.adagrad_window(),
+        obj_optimizer=pm.adagrad_window,
     )
     start = approx.sample(draws=njobs)
     start = list(start)
