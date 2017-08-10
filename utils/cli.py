@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 import pandas as pd
 import numpy as np
@@ -69,9 +70,22 @@ def get_cli_parser():
 
     return parser
 
+
 def get_parameter_directories(args):
     required_options = {'countdata': args.countdata, 'metadata': args.metadata,
                         'estimated_covariates': args.estimated_covariates, 'output':args.output}
     sampling_options = {'n_chains': args.n_chains, 'n_tune':args.n_tune, 'n_draws':args.n_draws, 'seed': args.seed}
     output_options = {'traceplot': args.traceplot, 'save_model': args.save_model, 'save_trace':args.save_trace}
     return required_options, sampling_options, output_options
+
+
+def log_except_hook(*exc_info):
+    import traceback
+    text = "".join(traceback.format_exception(*exc_info))
+    logging.error("Unhandled exception: %s", text)
+
+
+def setup_logging(outputdir):
+    os.makedirs(outputdir)
+    logging.root.addHandler(logging.FileHandler(os.path.join(outputdir, 'sampling.log')))
+    sys.excepthook = log_except_hook
