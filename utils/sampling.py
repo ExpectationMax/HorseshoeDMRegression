@@ -140,7 +140,7 @@ def init_nuts(njobs=1, n_init=200000, model=None,
     return start, step
 
 
-def init_nuts_stan(njobs=1, model=None, n_rounds=1, random_seed=-1):
+def init_nuts_stan(njobs=1, model=None, n_rounds=5, random_seed=-1):
     model = pm.modelcontext(model)
     stds = np.ones(model.ndim)
     start = None
