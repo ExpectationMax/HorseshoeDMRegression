@@ -23,6 +23,22 @@ def tsv_file(x):
     return data
 
 
+def pickle_file(x):
+    if not os.path.exists(x):
+        # Argparse uses the ArgumentTypeError to give a rejection message like:
+        # error: argument input: x does not exist
+        raise argparse.ArgumentTypeError("{0} does not exist".format(x))
+
+    try:
+        import pickle
+        with open(x, 'rb') as file:
+            data = pickle.load(file)
+    except Exception as e:
+        raise argparse.ArgumentTypeError("{} does not seem to be a valid pickled file:\n{}".format(x, e))
+
+    return data
+
+
 def nonexistant_file(x):
     if os.path.exists(x):
         raise argparse.ArgumentTypeError("{} exists and would be overwritten.".format(x))

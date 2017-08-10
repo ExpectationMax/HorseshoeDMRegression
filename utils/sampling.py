@@ -38,7 +38,7 @@ def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed):
 
 
 def compute_tau(O, C, S, p0, sigma=1):
-    return (p0 / (C * O)) * (sigma / np.sqrt(S))
+    return (p0 / (C * O - p0)) * (sigma / np.sqrt(S))
 
 
 def get_random_seeds(rseed, njobs):

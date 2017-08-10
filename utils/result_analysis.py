@@ -2,10 +2,11 @@ import pandas as pd
 import numpy as np
 from collections import OrderedDict
 
-def compute_beta_statistics(trace, beta, taxa, covariates, percentiles=[5, 95]):
+def compute_beta_statistics(trace, taxa, covariates, percentiles=[5, 95]):
     def convert_to_df(values):
         return pd.DataFrame(data=values, index=covariates, columns=taxa).T
 
+    beta = trace['beta']
     sheets = OrderedDict()
     sheets['beta_mean'] = convert_to_df(beta.mean(axis=0))
     sheets['beta_sd'] = convert_to_df(beta.std(axis=0))
@@ -28,15 +29,14 @@ def compute_beta_statistics(trace, beta, taxa, covariates, percentiles=[5, 95]):
 
 def generate_excel_summary(trace, taxa, covariates, outputfile):
     # beta trace has shape (#iterations, #covariates, #OTUs)
-    beta = trace['beta']
-    sheets = compute_beta_statistics(trace, beta, taxa, covariates)
+    sheets = compute_beta_statistics(trace, taxa, covariates)
     with pd.ExcelWriter(outputfile, engine='xlsxwriter') as excelfile:
         for sheet, data in sheets.items():
             data.to_excel(excelfile, sheet_name=sheet)
 
 
 def compute_shrinkage_from_trace(trace):
-    return (1/(1+ trace['lambda']**2 * (trace['tau']**2)[:, np.newaxis, np.newaxis])).mean(axis=0)
+    return (1/(1 + (trace['lambda']**2)*(trace['tau'][:, np.newaxis, np.newaxis]))).mean(axis=0)
 
 
 def compute_pseudo_inclusion_probability(trace):
