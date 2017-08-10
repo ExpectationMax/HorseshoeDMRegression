@@ -7,7 +7,7 @@ from pymc3.variational.callbacks import Callback
 from .data import get_input_specs
 from dmbvs_wrapper import compute_alpha_init, compute_beta_init, scale
 
-def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, init, modeltype):
+def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, init, model_type):
     import dm_regression_model
 
     O, C, S = get_input_specs(countdata.T, metadata)
@@ -28,9 +28,9 @@ def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, i
     beta_init = compute_beta_init(countdata, metadata)
 
     #model = dm_regression_model.DMRegressionModel(S, C, O, tau0, nu=nu, centered=False, alpha_init=alpha_init.values, beta_init=beta_init.T.values)
-    if modeltype == 'DMRegression':
+    if model_type == 'DMRegression':
         model = dm_regression_model.DMRegressionModel(S, C, O, 1, nu=nu, centered=False, alpha_init=alpha_init.values, beta_init=beta_init.T.values)
-    elif modeltype == 'MvNormalDMRegression':
+    elif model_type == 'MvNormalDMRegression':
         model = dm_regression_model.DMRegressionMVNormalModel(S, C, O, tau0, nu=nu, centered=False)
 
     model.set_counts_and_covariates(countdata, metadata)

@@ -93,7 +93,7 @@ def get_parameter_directories(args):
     required_options = {'countdata': args.countdata, 'metadata': args.metadata,
                         'estimated_covariates': args.estimated_covariates, 'output':args.output}
     sampling_options = {'n_chains': args.n_chains, 'n_tune':args.n_tune, 'n_draws':args.n_draws, 'seed': args.seed,
-                        'init':args.init, 'modeltype':args.modeltype}
+                        'init':args.init, 'model_type':args.model_type}
     output_options = {'traceplot': args.traceplot, 'save_model': args.save_model, 'save_trace':args.save_trace}
     return required_options, sampling_options, output_options
 
