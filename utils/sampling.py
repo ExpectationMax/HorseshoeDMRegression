@@ -5,8 +5,9 @@ from pymc3.step_methods.hmc import quadpotential
 from pymc3.variational.callbacks import Callback
 
 from .data import get_input_specs
+from dmbvs_wrapper import compute_alpha_init, compute_beta_init
 
-def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed):
+def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, init):
     import dm_regression_model
 
     O, C, S = get_input_specs(countdata.T, metadata)
@@ -23,11 +24,19 @@ def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed):
     rseed, seeds = get_random_seeds(seed, n_chains)
     sampling_logger.info('Random seed used for sampling: %i', rseed)
 
-    model = dm_regression_model.DMRegressionModel(S, C, O, tau0, nu=nu, centered=False)
+    alpha_init = compute_alpha_init(countdata)
+    beta_init = compute_beta_init(countdata, metadata)
+
+    model = dm_regression_model.DMRegressionModel(S, C, O, tau0, nu=nu, centered=False, alpha_init=alpha_init.values,
+                                                  beta_init=beta_init.T.values)
     model.set_counts_and_covariates(countdata, metadata)
     try:
         with model:
-            start, step = init_nuts(njobs=n_chains, random_seed=seeds)
+            if init == 'ADVI':
+                start, step = init_nuts(njobs=n_chains, random_seed=seeds)
+            elif init == 'NUTS':
+                start, step = init_nuts_stan(n_chains, random_seed=seeds[0])
+
             trace = pm.sample(n_draws, tune=n_tune, start=start, step=step, njobs=n_chains, random_seed=seeds)
     except Exception as e:
         sampling_logger.error('Error during initialisation or sampling:')
@@ -98,7 +107,7 @@ def init_nuts(njobs=1, n_init=200000, model=None,
     cb = [
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='absolute'),
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='relative'),
-        EarlyStopping(tolerance=1e-2)
+    #    EarlyStopping(tolerance=1e-2)
     ]
 
     if start_at_map:
@@ -113,7 +122,7 @@ def init_nuts(njobs=1, n_init=200000, model=None,
         n=n_init, method=method, model=model,
         callbacks=cb,
         progressbar=progressbar,
-        obj_optimizer=pm.adagrad_window,
+        obj_optimizer=pm.adagrad_window(),
     )
     start = approx.sample(draws=njobs)
     start = list(start)
@@ -129,3 +138,39 @@ def init_nuts(njobs=1, n_init=200000, model=None,
 
     step = pm.NUTS(potential=potential, **kwargs)
     return start, step
+
+
+def init_nuts_stan(njobs=1, model=None, n_rounds=1, random_seed=-1):
+    model = pm.modelcontext(model)
+    stds = np.ones(model.ndim)
+    start = None
+    np.random.seed(random_seed)
+    for _ in range(n_rounds):
+        args = {'scaling': stds ** 2, 'is_cov': True}
+        trace = pm.sample(100, tune=100, init=None, nuts_kwargs=args, start=start)
+        samples = [model.dict_to_array(p) for p in trace]
+        stds = np.array(samples).std(axis=0)
+        start= {}
+        for var in trace.varnames:
+            start[var] = trace[var].mean()
+
+    start = []
+    for j in range(njobs):
+        start.append(trace[-10*j if j > 0 else -1])
+    step = pm.NUTS(scaling=stds ** 2, is_cov=True, target_accept=0.9)
+
+    if njobs == 1:
+        start = start[0]
+
+    return start, step
+
+
+def init_nuts_stein(njobs=1, model=None, random_seed=-1):
+    model = pm.modelcontext(model)
+    approx = pm.fit(
+        random_seed=random_seed,
+        n=n_init, method=method, model=model,
+        callbacks=cb,
+        progressbar=progressbar,
+        obj_optimizer=pm.adagrad_window(learning_rate=0.0005),
+    )

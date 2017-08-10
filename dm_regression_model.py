@@ -28,7 +28,7 @@ class DMRegressionModel(pm.Model):
                 pm.HalfCauchy('tau', t0)
             else:
                 tau_normal = pm.HalfNormal('tau-normal', t0)
-                tau_invGamma = pm.InverseGamma('tau-invGamma', 0.5, 0.5, testval=(0.5/(0.5+1)))
+                tau_invGamma = pm.InverseGamma('tau-invGamma', alpha=0.5, beta=0.5, testval=(0.5/(0.5+1)))
                 pm.Deterministic('tau', tau_normal*tt.sqrt(tau_invGamma))
         else:
             pm.HalfNormal('tau', t0)
@@ -36,14 +36,14 @@ class DMRegressionModel(pm.Model):
         if centered:
             pm.HalfStudentT('lambda', nu=nu, mu=0, shape=(self.C, self.O))
         else:
-            lamb_normal = pm.HalfNormal('lamb-Normal', 1, shape=(self.C, self.O))
-            lamb_invGamma = pm.InverseGamma('lamb-invGamma', 0.5 * nu, 0.5 * nu, shape=(self.C, self.O), testval=np.full((self.C, self.O), (0.5*nu)/(0.5*nu + 1)))
+            lamb_normal = pm.HalfNormal('lamb-Normal', sd=1, shape=(self.C, self.O))
+            lamb_invGamma = pm.InverseGamma('lamb-invGamma', alpha=0.5 * nu, beta=0.5 * nu, shape=(self.C, self.O), testval=np.full((self.C, self.O), (0.5*nu)/(0.5*nu + 1)))
             pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
 
         if centered:
-            pm.Normal('beta', 0, self['lambda']*self.tau, shape=(self.C, self.O), testval=beta_init)
+            pm.Normal('beta', mu=0, sd=self['lambda']*self.tau, shape=(self.C, self.O), testval=beta_init)
         else:
-            z = pm.Normal('z', 0, 1, shape=(self.C, self.O), testval=z_init)
+            z = pm.Normal('z', mu=0, sd=1, shape=(self.C, self.O), testval=z_init)
             pm.Deterministic('beta', z*self['lambda']*self.tau)
 
         self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')

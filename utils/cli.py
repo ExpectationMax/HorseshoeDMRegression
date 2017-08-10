@@ -71,9 +71,10 @@ def get_cli_parser():
     parser.add_argument('countdata', type=tsv_file)
     parser.add_argument('metadata', type=tsv_file)
     parser.add_argument('--estimated_covariates', type=int, required=True)
-    parser.add_argument('-o', '--output', required=True, type=nonexistant_file)
+    parser.add_argument('-o', '--output', required=True)#, type=nonexistant_file)
 
     sampling_group = parser.add_argument_group('Sampling options')
+    sampling_group.add_argument('--init', default='ADVI', choices=['ADVI', 'NUTS'])
     sampling_group.add_argument('--n_chains', type=int, default=4)
     sampling_group.add_argument('--n_tune', type=int, default=2000)
     sampling_group.add_argument('--n_draws', type=int, default=2000)
@@ -90,7 +91,7 @@ def get_cli_parser():
 def get_parameter_directories(args):
     required_options = {'countdata': args.countdata, 'metadata': args.metadata,
                         'estimated_covariates': args.estimated_covariates, 'output':args.output}
-    sampling_options = {'n_chains': args.n_chains, 'n_tune':args.n_tune, 'n_draws':args.n_draws, 'seed': args.seed}
+    sampling_options = {'n_chains': args.n_chains, 'n_tune':args.n_tune, 'n_draws':args.n_draws, 'seed': args.seed, 'init':args.init}
     output_options = {'traceplot': args.traceplot, 'save_model': args.save_model, 'save_trace':args.save_trace}
     return required_options, sampling_options, output_options
 
@@ -102,6 +103,6 @@ def log_except_hook(*exc_info):
 
 
 def setup_logging(outputdir):
-    os.makedirs(outputdir)
+    os.makedirs(outputdir, exist_ok=True)
     logging.root.addHandler(logging.FileHandler(os.path.join(outputdir, 'sampling.log')))
     sys.excepthook = log_except_hook

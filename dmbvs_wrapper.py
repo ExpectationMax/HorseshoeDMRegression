@@ -6,8 +6,9 @@ import pandas as pd
 from scipy.stats import spearmanr
 from statsmodels.stats.multitest import multipletests
 
+
 def compute_alpha_init(countdata):
-    return pd.DataFrame(scale(np.log(countdata.sum(axis=0))))
+    return pd.Series(np.log(countdata.sum(axis=0)))
 
 
 def compute_beta_init(countdata, metadata):
