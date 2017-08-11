@@ -13,13 +13,17 @@ def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, i
     import dm_regression_model
 
     O, C, S = get_input_specs(countdata.T, metadata)
-    #tau0 = compute_tau(O, C, S, p0)
+    if p0 == -1:
+        tau0 = 1
+    else:
+        tau0 = compute_tau(O, C, S, p0)
+
     sampling_logger = logging.getLogger('Sampling')
     nu = 1
 
     sampling_logger.info(
         'Running sampling with parameters: tau0 = %f, nu = %i, n_chains = %i, n_tune = %i, n_draws = %i',
-        1, nu, n_chains, n_tune, n_draws)
+        tau0, nu, n_chains, n_tune, n_draws)
 
     if seed == -1:
         sampling_logger.warning('Random seed not set, please note following value to ensure reproducibility.')
@@ -29,19 +33,23 @@ def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, i
     alpha_init = scale(compute_alpha_init(countdata))
     beta_init = compute_beta_init(countdata, metadata)
 
-    #model = dm_regression_model.DMRegressionModel(S, C, O, tau0, nu=nu, centered=False, alpha_init=alpha_init.values, beta_init=beta_init.T.values)
     if model_type == 'DMRegression':
-        model = dm_regression_model.DMRegressionModel(S, C, O, 1, nu=nu, centered=False, alpha_init=alpha_init.values, beta_init=beta_init.T.values)
+        model = dm_regression_model.DMRegressionModel(S, C, O, tau0, nu=nu, centered=False, alpha_init=alpha_init.values, beta_init=beta_init.T.values)
         model.set_counts_and_covariates(countdata, metadata)
-    elif model_type == 'MvNormalDMRegression':
+    elif model_type == 'MvNormalDMRegressionInit':
         B0_init = calculate_B0_init(countdata)
         B_init = calculate_B_init(countdata, metadata)
         z_init = calculate_z_init(countdata)
         theta_chol_init = calculate_cholesky_theta_init(countdata)
-        model = dm_regression_model.DMRegressionMVNormalModel(countdata.values, metadata.values, 1, nu=nu, centered=False,
-                                                              alpha_init=B0_init, beta_init=B_init, z_init=z_init,
-                                                              chol_init=theta_chol_init)
-
+        model = dm_regression_model.DMRegressionMVNormalModel(countdata.values, pm.floatX(metadata.values), tau0, nu=nu,
+                                                              centered=False, alpha_init=pm.floatX(B0_init),
+                                                              beta_init=pm.floatX(B_init), z_init=pm.floatX(z_init),
+                                                              chol_init=pm.floatX(theta_chol_init))
+    elif model_type == 'MvNormalDMRegression':
+        model = dm_regression_model.DMRegressionMVNormalModel(countdata.values, pm.floatX(metadata.values), tau0, nu=nu,
+                                                              centered=False)
+    else:
+        raise ValueError('Model type not correctly specified')
 
     try:
         with model:

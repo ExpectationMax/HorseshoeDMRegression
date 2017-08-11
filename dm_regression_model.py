@@ -109,7 +109,7 @@ class DMRegressionMVNormalModel(pm.Model):
         chol_packed = pm.LKJCholeskyCov('chol_packed', n=self.O, eta=1, sd_dist=sd_dist, testval=chol_init)
         chol = pm.expand_packed_triangular(self.O, chol_packed)
         z_raw = pm.Normal('z_raw', mu=0, sd=1, shape=(self.S, self.O))
-        z = pm.Deterministic('z', self.alpha[np.newaxis, :] + tt.dot(z_raw, chol))
+        z = pm.Deterministic('z', self.alpha[np.newaxis, :] + tt.dot(chol, z_raw.T).T)
         #vals = pm.MvNormal('z', mu=self.alpha, chol=chol, testval=z_init, shape=(self.S, self.O))  #
 
         self.intermediate = tt.exp(z + tt.dot(self.covariates, self.beta))
