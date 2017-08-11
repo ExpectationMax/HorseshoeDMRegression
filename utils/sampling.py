@@ -9,7 +9,7 @@ from dmbvs_wrapper import compute_alpha_init, compute_beta_init, scale
 from .mLDM_initialization import calculate_B0_init, calculate_B_init, calculate_z_init, calculate_cholesky_theta_init
 
 
-def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, init, model_type):
+def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draws, seed, init, model_type):
     import dm_regression_model
 
     O, C, S = get_input_specs(countdata.T, metadata)
@@ -48,6 +48,8 @@ def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, i
     elif model_type == 'MvNormalDMRegression':
         model = dm_regression_model.DMRegressionMVNormalModel(countdata.values, pm.floatX(metadata.values), tau0, nu=nu,
                                                               centered=False)
+    elif model_type == 'DMRegressionMixed':
+        model = dm_regression_model.DMRegressionMixed(countdata.values, pm.floatX(metadata.values), patients, tau0, nu=nu, centered=False)
     else:
         raise ValueError('Model type not correctly specified')
 
@@ -128,7 +130,7 @@ def init_nuts(njobs=1, n_init=200000, model=None,
     cb = [
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='absolute'),
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='relative'),
-        EarlyStopping(tolerance=1e-2)
+        #EarlyStopping(tolerance=1e-2)
     ]
 
     if start_at_map:

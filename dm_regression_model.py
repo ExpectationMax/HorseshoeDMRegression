@@ -15,11 +15,8 @@ class DMRegressionModel(pm.Model):
         self.data = theano.shared(np.ones((self.S, self.O), dtype=np.uint), 'data')
         self.n = self.data.sum(axis=-1)
 
-        if alpha_init is None:
-            alpha_init=np.full(self.O, 0)
         if beta_init is None:
-            beta_init=np.full((self.C, self.O), 0)
-            z_init = np.full((self.C, self.O), 0)
+            z_init = None
         else:
             z_init = beta_init/beta_init.std()
 
@@ -117,14 +114,17 @@ class DMRegressionMVNormalModel(pm.Model):
 
 
 class DMRegressionMixed(pm.Model):
-    def __init__(self, n_samples, n_covariates, n_otus, t0, patients, nu=3, centered=True, cauchy=True,
+    def __init__(self, countdata, metadata, patients, t0, nu=3, centered=True, cauchy=True,
                  name='', model=None):
-        super(DMRegressionModel, self).__init__(name, model)
-        self.S = n_samples
-        self.C = n_covariates
-        self.O = n_otus
-        self.covariates = theano.shared(np.zeros((self.S, self.C)), 'covariates')
-        self.data = theano.shared(np.ones((self.S, self.O), dtype=np.uint), 'data')
+        super(DMRegressionMixed, self).__init__(name, model)
+        self.S, self.O = countdata.shape
+        self.S, self.C = metadata.shape
+
+        self.covariates = metadata
+        self.data = countdata
+        unique_patients, patient_indexes = np.unique(patients, return_index=True)
+        self.n_patients = len(unique_patients)
+        self.patientindexes = patient_indexes
         self.n = self.data.sum(axis=-1)
 
         if cauchy:
@@ -152,8 +152,12 @@ class DMRegressionMixed(pm.Model):
 
         self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
         pm.Normal('alpha', 0, 10, shape=self.O)
+        deviation = pm.HalfCauchy('sigma_alphas', 5)
+        alpha_offsets = pm.Normal('alpha_offsets', mu=0, sd=1, shape=(self.n_patients, self.O))
 
-        self.intermediate = tt.exp(self.alpha + tt.dot(self.covariates, self.beta*self.coefficient_mask))
+        pm.Deterministic('alphas', self.alpha[np.newaxis, :] + alpha_offsets[self.patientindexes]*deviation)
+
+        self.intermediate = tt.exp(self.alphas + tt.dot(self.covariates, self.beta*self.coefficient_mask))
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
 
     def set_counts_and_covariates(self, counts, covariates):

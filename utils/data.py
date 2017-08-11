@@ -11,3 +11,11 @@ def extract_taxa_and_covariates(countdata, metadata):
 
 def center_and_standardize_columns(data):
     return (data - data.mean(axis=0))/data.std(axis=0)
+
+def extract_patients_if_present(metadata):
+    if 'patient' in metadata.columns:
+        patients = metadata.patient
+        metadata = metadata.drop('patient')
+        return patients, metadata
+    else:
+        return None, metadata
