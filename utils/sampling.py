@@ -6,18 +6,20 @@ from pymc3.variational.callbacks import Callback
 
 from .data import get_input_specs
 from dmbvs_wrapper import compute_alpha_init, compute_beta_init, scale
+from .mLDM_initialization import calculate_B0_init, calculate_B_init, calculate_z_init, calculate_cholesky_theta_init
+
 
 def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, init, model_type):
     import dm_regression_model
 
     O, C, S = get_input_specs(countdata.T, metadata)
-    tau0 = compute_tau(O, C, S, p0)
+    #tau0 = compute_tau(O, C, S, p0)
     sampling_logger = logging.getLogger('Sampling')
     nu = 1
 
     sampling_logger.info(
         'Running sampling with parameters: tau0 = %f, nu = %i, n_chains = %i, n_tune = %i, n_draws = %i',
-        tau0, nu, n_chains, n_tune, n_draws)
+        1, nu, n_chains, n_tune, n_draws)
 
     if seed == -1:
         sampling_logger.warning('Random seed not set, please note following value to ensure reproducibility.')
@@ -30,10 +32,17 @@ def run_hmc_sampling(countdata, metadata, p0, n_chains, n_tune, n_draws, seed, i
     #model = dm_regression_model.DMRegressionModel(S, C, O, tau0, nu=nu, centered=False, alpha_init=alpha_init.values, beta_init=beta_init.T.values)
     if model_type == 'DMRegression':
         model = dm_regression_model.DMRegressionModel(S, C, O, 1, nu=nu, centered=False, alpha_init=alpha_init.values, beta_init=beta_init.T.values)
+        model.set_counts_and_covariates(countdata, metadata)
     elif model_type == 'MvNormalDMRegression':
-        model = dm_regression_model.DMRegressionMVNormalModel(S, C, O, tau0, nu=nu, centered=False)
+        B0_init = calculate_B0_init(countdata)
+        B_init = calculate_B_init(countdata, metadata)
+        z_init = calculate_z_init(countdata)
+        theta_chol_init = calculate_cholesky_theta_init(countdata)
+        model = dm_regression_model.DMRegressionMVNormalModel(countdata.values, metadata.values, 1, nu=nu, centered=False,
+                                                              alpha_init=B0_init, beta_init=B_init, z_init=z_init,
+                                                              chol_init=theta_chol_init)
 
-    model.set_counts_and_covariates(countdata, metadata)
+
     try:
         with model:
             if init == 'ADVI':

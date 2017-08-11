@@ -75,23 +75,14 @@ class DMRegressionModel(pm.Model):
 
 
 class DMRegressionMVNormalModel(pm.Model):
-    def __init__(self, n_samples, n_covariates, n_otus, t0, nu=3, centered=True, cauchy=True, alpha_init=None,
-                 beta_init=None, name='', model=None):
+    def __init__(self, countdata, metadata, t0, nu=3, centered=True, cauchy=True, alpha_init=None,
+                 beta_init=None, z_init=None, chol_init=None, name='', model=None):
         super(DMRegressionMVNormalModel, self).__init__(name, model)
-        self.S = n_samples
-        self.C = n_covariates
-        self.O = n_otus
-        self.covariates = theano.shared(np.zeros((self.S, self.C)), 'covariates')
-        self.data = theano.shared(np.ones((self.S, self.O), dtype=np.uint), 'data')
+        self.S, self.O = countdata.shape
+        self.S, self.C = metadata.shape
+        self.covariates = metadata
+        self.data = countdata.astype(np.uint)
         self.n = self.data.sum(axis=-1)
-
-        if alpha_init is None:
-            alpha_init=np.full(self.O, 0)
-        if beta_init is None:
-            beta_init=np.full((self.C, self.O), 0)
-            z_init = np.full((self.C, self.O), 0)
-        else:
-            z_init = beta_init/beta_init.std()
 
         if cauchy:
             if centered:
@@ -110,46 +101,19 @@ class DMRegressionMVNormalModel(pm.Model):
             lamb_invGamma = pm.InverseGamma('lamb-invGamma', alpha=0.5 * nu, beta=0.5 * nu, shape=(self.C, self.O), testval=np.full((self.C, self.O), (0.5*nu)/(0.5*nu + 1)))
             pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
 
-        if centered:
-            pm.Normal('beta', mu=0, sd=self['lambda']*self.tau, shape=(self.C, self.O), testval=beta_init)
-        else:
-            z = pm.Normal('z', mu=0, sd=1, shape=(self.C, self.O), testval=z_init)
-            pm.Deterministic('beta', z*self['lambda']*self.tau)
-
-        self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
+        pm.Normal('beta', mu=0, sd=self['lambda']*self.tau, shape=(self.C, self.O), testval=beta_init)
 
         pm.Normal('alpha', 0, 10, shape=self.O, testval=alpha_init) # this is basically B0
-        sd_dist = pm.HalfCauchy.dist(beta=1, shape=self.O)
-        chol_packed = pm.LKJCholeskyCov('chol_packed', n=self.O, eta=1, sd_dist=sd_dist)
+
+        sd_dist = pm.HalfCauchy.dist(beta=2.5, shape=self.O)
+        chol_packed = pm.LKJCholeskyCov('chol_packed', n=self.O, eta=1, sd_dist=sd_dist, testval=chol_init)
         chol = pm.expand_packed_triangular(self.O, chol_packed)
-        vals_raw = pm.Normal('vals_raw', mu=0, sd=1, shape=(self.S, self.O))
-        vals = pm.Deterministic('vals', tt.dot(chol, (vals_raw + self.alpha).T).T)
+        z_raw = pm.Normal('z_raw', mu=0, sd=1, shape=(self.S, self.O))
+        z = pm.Deterministic('z', self.alpha[np.newaxis, :] + tt.dot(z_raw, chol))
+        #vals = pm.MvNormal('z', mu=self.alpha, chol=chol, testval=z_init, shape=(self.S, self.O))  #
 
-        self.intermediate = tt.exp(vals + tt.dot(self.covariates, self.beta*self.coefficient_mask))
+        self.intermediate = tt.exp(z + tt.dot(self.covariates, self.beta))
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
-
-    def set_counts_and_covariates(self, counts, covariates):
-        if counts.shape[0] == covariates.shape[0]:
-            self.data.set_value(counts)
-            self.covariates.set_value(covariates)
-        else:
-            raise ValueError('Counts and covariates must have same sample dimension ({} vs {})'
-                             .format(counts.shape[0], covariates.shape[0]))
-
-    def set_counts(self, counts, borrow=False):
-        data_shape = self.data.shape.eval()
-        if counts.shape[0] == data_shape[0] and counts.shape[1] == data_shape[1]:
-            self.data.set_value(counts, borrow=borrow)
-        else:
-            raise ValueError('Counts must have same dimension ({}x{} vs {}x{})'
-                             .format(counts.shape[0], counts.shape[1], data_shape[0], data_shape[1]))
-
-    def set_coefficient_mask(self, coefficient_mask):
-        if coefficient_mask.shape[0] == self.C and coefficient_mask.shape[1] == self.O:
-            self.coefficient_mask.set_value(coefficient_mask)
-        else:
-            raise ValueError('Coefficient mask must have dimensions ({}x{})'.format(self.C, self.O))
-
 
 
 class DMRegressionMixed(pm.Model):

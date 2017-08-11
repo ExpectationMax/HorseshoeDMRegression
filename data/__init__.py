@@ -19,5 +19,5 @@ def get_biological_datasets():
     return [filename for filename in os.listdir(os.path.join(basepath, 'biological')) if os.path.isdir(os.path.join(basepath, 'biological', filename)) and not filename.endswith('__')]
 
 def get_biological_data(dataname):
-    return {'counts': pd.read_table(os.path.join(basepath, 'biological', dataname, 'X.tsv')),
-            'covariates': pd.read_table(os.path.join(basepath, 'biological', dataname, 'M.tsv'))}
+    return {'counts': pd.read_table(os.path.join(basepath, 'biological', dataname, 'X.tsv'), index_col=0),
+            'covariates': pd.read_table(os.path.join(basepath, 'biological', dataname, 'M.tsv'), index_col=0)}
