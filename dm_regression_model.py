@@ -122,6 +122,9 @@ class DMRegressionMixed(pm.Model):
 
         self.covariates = metadata
         self.data = countdata
+        if patients is None:
+            patients = np.arange(self.S)
+
         unique_patients, patient_indexes = np.unique(patients, return_index=True)
         self.n_patients = len(unique_patients)
         self.patientindexes = patient_indexes
@@ -152,7 +155,7 @@ class DMRegressionMixed(pm.Model):
 
         self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
         pm.Normal('alpha', 0, 10, shape=self.O)
-        deviation = pm.HalfCauchy('sigma_alphas', 5)
+        deviation = pm.HalfCauchy('sigma_alphas', 1)
         alpha_offsets = pm.Normal('alpha_offsets', mu=0, sd=1, shape=(self.n_patients, self.O))
 
         pm.Deterministic('alphas', self.alpha[np.newaxis, :] + alpha_offsets[self.patientindexes]*deviation)
