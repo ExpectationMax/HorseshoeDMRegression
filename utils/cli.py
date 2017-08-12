@@ -100,10 +100,12 @@ def get_parameter_directories(args):
     return required_options, sampling_options, output_options
 
 
+old_excepthook = sys.excepthook
 def log_except_hook(*exc_info):
     import traceback
     text = "".join(traceback.format_exception(*exc_info))
     logging.error("Unhandled exception: %s", text)
+    old_excepthook(*exc_info)
 
 
 def setup_logging(outputdir):

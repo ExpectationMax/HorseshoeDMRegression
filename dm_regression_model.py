@@ -121,11 +121,11 @@ class DMRegressionMixed(pm.Model):
         self.S, self.C = metadata.shape
 
         self.covariates = metadata
-        self.data = countdata
-        if patients is None:
-            patients = np.arange(self.S)
+        self.data = countdata.astype(int)
+        #if patients is None:
+        #    patients = np.arange(self.S)
 
-        unique_patients, patient_indexes = np.unique(patients, return_index=True)
+        unique_patients, patient_indexes = np.unique(patients, return_inverse=True)
         self.n_patients = len(unique_patients)
         self.patientindexes = patient_indexes
         self.n = self.data.sum(axis=-1)
@@ -153,38 +153,14 @@ class DMRegressionMixed(pm.Model):
             z = pm.Normal('z', 0, 1, shape=(self.C, self.O))
             pm.Deterministic('beta', z*self['lambda']*self.tau)
 
-        self.coefficient_mask = theano.shared(np.ones((self.C, self.O), dtype=np.uint8), 'beta_mask')
         pm.Normal('alpha', 0, 10, shape=self.O)
         deviation = pm.HalfCauchy('sigma_alphas', 1)
         alpha_offsets = pm.Normal('alpha_offsets', mu=0, sd=1, shape=(self.n_patients, self.O))
 
         pm.Deterministic('alphas', self.alpha[np.newaxis, :] + alpha_offsets[self.patientindexes]*deviation)
 
-        self.intermediate = tt.exp(self.alphas + tt.dot(self.covariates, self.beta*self.coefficient_mask))
+        self.intermediate = tt.exp(self.alphas + tt.dot(self.covariates, self.beta))
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
-
-    def set_counts_and_covariates(self, counts, covariates):
-        if counts.shape[0] == covariates.shape[0]:
-            self.data.set_value(counts)
-            self.covariates.set_value(covariates)
-        else:
-            raise ValueError('Counts and covariates must have same sample dimension ({} vs {})'
-                             .format(counts.shape[0], covariates.shape[0]))
-
-    def set_counts(self, counts, borrow=False):
-        data_shape = self.data.shape.eval()
-        if counts.shape[0] == data_shape[0] and counts.shape[1] == data_shape[1]:
-            self.data.set_value(counts, borrow=borrow)
-        else:
-            raise ValueError('Counts must have same dimension ({}x{} vs {}x{})'
-                             .format(counts.shape[0], counts.shape[1], data_shape[0], data_shape[1]))
-
-    def set_coefficient_mask(self, coefficient_mask):
-        if coefficient_mask.shape[0] == self.C and coefficient_mask.shape[1] == self.O:
-            self.coefficient_mask.set_value(coefficient_mask)
-        else:
-            raise ValueError('Coefficient mask must have dimensions ({}x{})'.format(self.C, self.O))
-
 
 
 class MaskableDMRegressionModel(DMRegressionModel):
