@@ -81,7 +81,8 @@ def get_cli_parser():
     sampling_group.add_argument('--seed', type=int, default=-1)
     sampling_group.add_argument('--model_type', default='DMRegression', choices=['DMRegression', 'DMRegressionMixed',
                                                                                  'MvNormalDMRegression',
-                                                                                 'MvNormalDMRegressionInit'])
+                                                                                 'MvNormalDMRegressionInit',
+                                                                                 'SoftmaxRegression'])
 
     output_group = parser.add_argument_group('Output options')
     output_group.add_argument('--traceplot', action='store_true', default=False)

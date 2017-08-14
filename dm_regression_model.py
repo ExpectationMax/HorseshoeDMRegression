@@ -163,6 +163,57 @@ class DMRegressionMixed(pm.Model):
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
 
 
+class SoftmaxRegression(pm.Model):
+    def __init__(self, countdata, metadata, patients, t0, nu=3, centered=True, cauchy=True,
+                 name='', model=None):
+        super(SoftmaxRegression, self).__init__(name, model)
+        self.S, self.O = countdata.shape
+        self.S, self.C = metadata.shape
+
+        self.covariates = metadata
+        self.data = countdata.astype(int)
+        if patients is None:
+            patients = np.arange(self.S)
+
+        unique_patients, patient_indexes = np.unique(patients, return_inverse=True)
+        self.n_patients = len(unique_patients)
+        self.patientindexes = patient_indexes
+        self.n = self.data.sum(axis=-1)
+
+        if cauchy:
+            if centered:
+                pm.HalfCauchy('tau', t0)
+            else:
+                tau_normal = pm.HalfNormal('tau-normal', 1)
+                tau_invGamma = pm.InverseGamma('tau-invGamma', 0.5, 0.5, testval=(0.5 / (0.5 + 1)))
+                pm.Deterministic('tau', tau_normal * t0 * tt.sqrt(tau_invGamma))
+        else:
+            pm.HalfNormal('tau', t0)
+
+        if centered:
+            pm.HalfStudentT('lambda', nu=nu, mu=0, shape=(self.C, self.O))
+        else:
+            lamb_normal = pm.HalfNormal('lamb-Normal', 1, shape=(self.C, self.O))
+            lamb_invGamma = pm.InverseGamma('lamb-invGamma', 0.5 * nu, 0.5 * nu, shape=(self.C, self.O),
+                                            testval=np.full((self.C, self.O), (0.5 * nu) / (0.5 * nu + 1)))
+            pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
+
+        if centered:
+            pm.Normal('beta', 0, self['lambda'] * self.tau, shape=(self.C, self.O))
+        else:
+            z = pm.Normal('z', 0, 1, shape=(self.C, self.O))
+            pm.Deterministic('beta', z * self['lambda'] * self.tau)
+
+        pm.Normal('alpha', 0, 5, shape=self.O)
+
+        pm.Deterministic('composition', tt.nnet.softmax(self.alpha + tt.dot(self.covariates, self.beta)))
+        precisions = pm.HalfCauchy('precision', 5, shape=self.n_patients)
+
+        pm.Deterministic('alphas', self.composition*(precisions[self.patientindexes][:, np.newaxis]))
+
+        DirichletMultinomial('counts', self.n, self.alphas, shape=(self.S, self.O), observed=self.data)
+
+
 class MaskableDMRegressionModel(DMRegressionModel):
     def __init__(self, n_samples, n_covariates, n_otus, t0, nu=3, centered_lambda=True, centered_beta=True, cauchy=True,
                  name='', mask=None, model=None):
