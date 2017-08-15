@@ -97,7 +97,7 @@ def analyse_run(dataset, model, variables, functions, save_traceplot):
             plt.savefig(os.path.join('traceplots', '{}-{}-traceplot.pdf'.format(dataset, model)))
         plt.close('all')
 
-    return statistics, result
+    return result, statistics
 
 
 def create_performance_dataframe(datasets, variables, functions, save_traceplot=True): #derived_variables={}):
@@ -184,7 +184,7 @@ if __name__ == '__main__':
         #compute_ra_performance,
         compute_pip_values
     ]
-    failed, res, stats = create_performance_dataframe(get_available_datasets()[:1], ['alpha','beta', 'tau'], functions)
+    failed, res, stats = create_performance_dataframe(get_available_datasets(), ['alpha','beta', 'tau'], functions)
     print('Failed datasets:')
     print(failed)
     _, res_model_details = split_modelname_into_parameters(res['Model'])
