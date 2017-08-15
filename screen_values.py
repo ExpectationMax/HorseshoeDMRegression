@@ -10,7 +10,7 @@ import pickle
 import numpy as np
 from data import get_simulated_data, get_available_datasets
 from itertools import product
-from utils import init_nuts
+from utils.sampling import init_nuts
 
 def traceplot_with_priors(trace, model):
     selected_vars = [varname for varname in model.named_vars.keys() if varname in trace.varnames and not varname.endswith('__') and hasattr(model, varname) and hasattr(model[varname], 'distribution')]
@@ -80,12 +80,12 @@ if __name__ == '__main__':
 
             models = {}
 
-            models['implicit_complete'] = dm_regression_model.DMRegressionModelNonsparseImplicit(S, C, O,
-                                                                                                 data['counts'],
-                                                                                                 data['covariates'])
+            #models['implicit_complete'] = dm_regression_model.DMRegressionModelNonsparseImplicit(S, C, O,
+            #                                                                                     data['counts'],
+            #                                                                                     data['covariates'])
 
             nus = [1, 2, 3]
-            centereds = [True, False]
+            centereds = [False]
             cauchys = [True, False]
             p0s = [p0]
 
@@ -94,7 +94,8 @@ if __name__ == '__main__':
 
             for nu, centered, cauchy, p0 in product(nus, centereds, cauchys, p0s):
                 name = 'horseshoe_nu{}_{}_{}_p0{}'.format(nu, 'centered' if centered else 'noncentered', 'cauchy' if cauchy else 'normal', p0)
-                t0 = (p0 / (C * O)) * (sigma / math.sqrt(S))
+                #t0 = (p0 / (C * O)) * (sigma / math.sqrt(S))
+                t0 = 1
                 print('p0 =', p0, 'sigma =', sigma, 'tau0 =', t0, 'C =', C, 'O = ', O, 'S = ', S, 'nu =', nu, 'cauchy =', cauchy)
                 with open(os.path.join(outputpath, name+'_parameters.txt'), 'w') as f:
                     f.write('p0 = {}, sigma = {}, tau0 = {}'.format(p0, sigma, t0))
