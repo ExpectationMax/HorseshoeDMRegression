@@ -1,14 +1,15 @@
 import argparse
 from utils.cli import tsv_file, pickle_file, nonexistant_file
-from utils.data import extract_taxa_and_covariates
+from utils.data import Dataset
 from utils.result_analysis import generate_excel_summary
 
 
 def generate_analysis_output(countdata, metadata, trace, outputfile, transpose):
     if transpose:
         countdata = countdata.T
-    taxa, covariates = extract_taxa_and_covariates(countdata, metadata)
-    generate_excel_summary(trace, taxa, covariates, outputfile)
+
+    dataset = Dataset(countdata, metadata)
+    generate_excel_summary(trace, dataset, outputfile)
 
 
 if __name__ == '__main__':

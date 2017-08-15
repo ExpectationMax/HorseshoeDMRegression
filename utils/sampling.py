@@ -49,7 +49,7 @@ def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draw
         model = dm_regression_model.DMRegressionMVNormalModel(countdata.values, pm.floatX(metadata.values), tau0, nu=nu,
                                                               centered=False)
     elif model_type == 'DMRegressionMixed':
-        model = dm_regression_model.DMRegressionMixed(countdata.values, pm.floatX(metadata.values), patients, tau0, nu=nu, centered=False)
+        model = dm_regression_model.DMRegressionMixedCovariates(countdata.values, pm.floatX(metadata.values), patients, tau0, nu=nu, centered=False)
     elif model_type == 'SoftmaxRegression':
         model = dm_regression_model.SoftmaxRegression(countdata.values, pm.floatX(metadata.values), patients, tau0,
                                                       nu=nu, centered=False)

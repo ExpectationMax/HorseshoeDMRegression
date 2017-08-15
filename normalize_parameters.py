@@ -164,8 +164,11 @@ def compute_ra_performance(dataset, data, model, trace):
          'Prediction (std)': stds.flatten()})
 
 
+def get_sample_size_from_dataset(dataset):
+    return int(dataset.split('_')[-1][:-1])
+
 def compute_pip_values(dataset, data, model, trace):
-    pip = compute_pseudo_inclusion_probability(trace).flatten()
+    pip = compute_pseudo_inclusion_probability(trace, get_sample_size_from_dataset(dataset)).flatten()
     gt_beta = data['beta'].flatten()
     beta_mean = trace['beta'].mean(axis=0).flatten()
     n_values = pip.size
@@ -175,6 +178,17 @@ def compute_pip_values(dataset, data, model, trace):
          'Prediction (mean)': beta_mean,
          'Prediction (std)': pip})
 
+def variable_selected(dataset, data, model, trace):
+    pip = compute_pseudo_inclusion_probability(trace, get_sample_size_from_dataset(dataset)).flatten()
+    include = pip > 0.5
+    gt_beta = data['beta'].flatten() != 0
+    n_values = include.size
+    return pd.DataFrame(
+        {'Dataset': [dataset] * n_values, 'Model': [model] * n_values, 'Variable': ['include_covariate'] * n_values,
+         'Groundtruth': gt_beta,
+         'Prediction (mean)': include,
+         'Prediction (std)': pip})
+
 if __name__ == '__main__':
     from data import get_available_datasets
     #models = ['explicit_horseshoe_nu1', 'explicit_horseshoe_nu3', 'implicit_horseshoe_nu1', 'implicit_horseshoe_nu3',
@@ -182,9 +196,10 @@ if __name__ == '__main__':
 
     functions = [
         #compute_ra_performance,
+        variable_selected,
         compute_pip_values
     ]
-    failed, res, stats = create_performance_dataframe(get_available_datasets(), ['alpha','beta', 'tau'], functions)
+    failed, res, stats = create_performance_dataframe(get_available_datasets(), ['alpha','beta', 'tau'], functions, save_traceplot=False)
     print('Failed datasets:')
     print(failed)
     _, res_model_details = split_modelname_into_parameters(res['Model'])
