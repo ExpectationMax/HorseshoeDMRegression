@@ -9,6 +9,7 @@ def get_simulated_data(dataname='5O_5C_6p0_5S'):
     out['counts'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'YY.tsv')).values
     out['beta'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'betas.tsv')).T.values
     out['alpha'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'alphas.tsv')).T.values
+    out['repetition'] = int(dataname.split('_')[-1][:-1])
     return out
 
 def get_available_datasets():

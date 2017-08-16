@@ -5,7 +5,7 @@ import pymc3 as pm
 import os
 import math
 import dm_regression_model
-import seaborn as sns
+from utils.sampling import compute_tau
 import pickle
 import numpy as np
 from data import get_simulated_data, get_available_datasets
@@ -42,7 +42,7 @@ def run_sampling_with_model(name, model, outputpath, rseed, njobs=1, tune=2000, 
         #            trace = pm.sample(draws=draws, tune=tune, start=start, step=step, njobs=njobs)
         #else:
         with model:
-            start, step = init_nuts(njobs, random_seed=rseed, target_accept=0.9)
+            start, step = init_nuts(njobs, random_seed=rseed)
             trace = pm.sample(draws=draws, njobs=njobs, tune=tune, start=start, step=step, random_seed=rseed)
 
     except Exception as e:
@@ -52,9 +52,6 @@ def run_sampling_with_model(name, model, outputpath, rseed, njobs=1, tune=2000, 
     with open(os.path.join(outputpath, '{}_sampling.pck'.format(name)), 'wb') as f:
         pickle.dump(trace, f)
         print('Stored trace')
-
-    #pm.traceplot(trace, ['alpha', 'tau', 'beta'])
-    #sns.plt.savefig(os.path.join(outputpath, '{}_traceplot.pdf'.format(name)))
 
 
 if __name__ == '__main__':
@@ -75,7 +72,7 @@ if __name__ == '__main__':
             rseed = 35424353
 
             p0 = (data['beta'] != 0).sum().sum()
-
+            repeat = data['repetition']
             print(dataset)
 
             models = {}
@@ -84,18 +81,21 @@ if __name__ == '__main__':
             #                                                                                     data['counts'],
             #                                                                                     data['covariates'])
 
-            nus = [1, 2, 3]
+            nus = [1]
             centereds = [False]
-            cauchys = [True, False]
-            p0s = [p0]
+            cauchys = [True]
+            p0s = [p0, -1]
 
             sigma = 1
             #sigmas = [1, 2, 3]
 
             for nu, centered, cauchy, p0 in product(nus, centereds, cauchys, p0s):
-                name = 'horseshoe_nu{}_{}_{}_p0{}'.format(nu, 'centered' if centered else 'noncentered', 'cauchy' if cauchy else 'normal', p0)
-                #t0 = (p0 / (C * O)) * (sigma / math.sqrt(S))
-                t0 = 1
+                name = 'horseshoe_nu{}_{}_{}_p0{}_R{}'.format(nu, 'centered' if centered else 'noncentered', 'cauchy' if cauchy else 'normal', p0, repeat)
+                if p0 != -1:
+                    t0 = compute_tau(O, C, S, p0, sigma)
+                else:
+                    t0 = 1
+
                 print('p0 =', p0, 'sigma =', sigma, 'tau0 =', t0, 'C =', C, 'O = ', O, 'S = ', S, 'nu =', nu, 'cauchy =', cauchy)
                 with open(os.path.join(outputpath, name+'_parameters.txt'), 'w') as f:
                     f.write('p0 = {}, sigma = {}, tau0 = {}'.format(p0, sigma, t0))

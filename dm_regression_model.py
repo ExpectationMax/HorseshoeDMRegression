@@ -71,48 +71,6 @@ class DMRegressionModel(pm.Model):
             raise ValueError('Coefficient mask must have dimensions ({}x{})'.format(self.C, self.O))
 
 
-class DMRegressionMVNormalModel(pm.Model):
-    def __init__(self, countdata, metadata, t0, nu=3, centered=True, cauchy=True, alpha_init=None,
-                 beta_init=None, z_init=None, chol_init=None, name='', model=None):
-        super(DMRegressionMVNormalModel, self).__init__(name, model)
-        self.S, self.O = countdata.shape
-        self.S, self.C = metadata.shape
-        self.covariates = metadata
-        self.data = countdata.astype(np.uint)
-        self.n = self.data.sum(axis=-1)
-
-        if cauchy:
-            if centered:
-                pm.HalfCauchy('tau', t0)
-            else:
-                tau_normal = pm.HalfNormal('tau-normal', t0)
-                tau_invGamma = pm.InverseGamma('tau-invGamma', alpha=0.5, beta=0.5, testval=(0.5/(0.5+1)))
-                pm.Deterministic('tau', tau_normal*tt.sqrt(tau_invGamma))
-        else:
-            pm.HalfNormal('tau', t0)
-
-        if centered:
-            pm.HalfStudentT('lambda', nu=nu, mu=0, shape=(self.C, self.O))
-        else:
-            lamb_normal = pm.HalfNormal('lamb-Normal', sd=1, shape=(self.C, self.O))
-            lamb_invGamma = pm.InverseGamma('lamb-invGamma', alpha=0.5 * nu, beta=0.5 * nu, shape=(self.C, self.O), testval=np.full((self.C, self.O), (0.5*nu)/(0.5*nu + 1)))
-            pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
-
-        pm.Normal('beta', mu=0, sd=self['lambda']*self.tau, shape=(self.C, self.O), testval=beta_init)
-
-        pm.Normal('alpha', 0, 10, shape=self.O, testval=alpha_init) # this is basically B0
-
-        sd_dist = pm.HalfCauchy.dist(beta=2.5, shape=self.O)
-        chol_packed = pm.LKJCholeskyCov('chol_packed', n=self.O, eta=1, sd_dist=sd_dist, testval=chol_init)
-        chol = pm.expand_packed_triangular(self.O, chol_packed)
-        z_raw = pm.Normal('z_raw', mu=0, sd=1, shape=(self.S, self.O))
-        z = pm.Deterministic('z', self.alpha[np.newaxis, :] + tt.dot(chol, z_raw.T).T)
-        #vals = pm.MvNormal('z', mu=self.alpha, chol=chol, testval=z_init, shape=(self.S, self.O))  #
-
-        self.intermediate = tt.exp(z + tt.dot(self.covariates, self.beta))
-        DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
-
-
 class DMRegressionMixed(pm.Model):
     def __init__(self, countdata, metadata, patients, t0, nu=3, centered=True, cauchy=True,
                  name='', model=None):
@@ -161,6 +119,112 @@ class DMRegressionMixed(pm.Model):
 
         self.intermediate = tt.exp(self.alphas + tt.dot(self.covariates, self.beta))
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
+
+
+class DMRegressionMixedDP(pm.Model):
+    def __init__(self, countdata, metadata, DP_components, t0, nu=3, centered=True, cauchy=True,
+                 name='', model=None):
+        super(DMRegressionMixed, self).__init__(name, model)
+        self.S, self.O = countdata.shape
+        self.S, self.C = metadata.shape
+
+        self.covariates = metadata
+        self.data = countdata.astype(int)
+        #if patients is None:
+        #    patients = np.arange(self.S)
+
+        self.DP_components = DP_components
+        self.n = self.data.sum(axis=-1)
+
+        if cauchy:
+            if centered:
+                pm.HalfCauchy('tau', t0)
+            else:
+                tau_normal = pm.HalfNormal('tau-normal', t0)
+                tau_invGamma = pm.InverseGamma('tau-invGamma', 0.5, 0.5, testval=(0.5/(0.5+1)))
+                pm.Deterministic('tau', tau_normal*tt.sqrt(tau_invGamma))
+        else:
+            pm.HalfNormal('tau', t0)
+
+        if centered:
+            pm.HalfStudentT('lambda', nu=nu, mu=0, shape=(self.C, self.O))
+        else:
+            lamb_normal = pm.HalfNormal('lamb-Normal', 1, shape=(self.C, self.O))
+            lamb_invGamma = pm.InverseGamma('lamb-invGamma', 0.5 * nu, 0.5 * nu, shape=(self.C, self.O), testval=np.full((self.C, self.O), (0.5*nu)/(0.5*nu + 1)))
+            pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
+
+        if centered:
+            pm.Normal('beta', 0, self['lambda']*self.tau, shape=(self.C, self.O))
+        else:
+            z = pm.Normal('z', 0, 1, shape=(self.C, self.O))
+            pm.Deterministic('beta', z*self['lambda']*self.tau)
+
+        pm.Normal('alpha', 0, 10, shape=self.O)
+
+        random_effects = pm.Normal('random_effects', 0, 10, shape=(self.DP_components, self.O))
+        mixture_components = pm.Dirichlet('mixture-components', np.ones(self.DP_components), shape=(self.S, self.DP_components))
+        pm.Mixture('mixed', mixture_components, random_effects)
+
+        deviation = pm.HalfCauchy('sigma_alphas', 1)
+        alpha_offsets = pm.Normal('alpha_offsets', mu=0, sd=1, shape=(self.n_patients, self.O))
+
+        pm.Deterministic('alphas', self.alpha[np.newaxis, :] + alpha_offsets[self.patientindexes]*deviation)
+
+        self.intermediate = tt.exp(self.alphas + tt.dot(self.covariates, self.beta))
+        DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
+
+
+class DMRegressionMixedCovariates(pm.Model):
+    def __init__(self, countdata, metadata, patients, t0, nu=3, centered=True, cauchy=True,
+                 name='', model=None):
+        super(DMRegressionMixedCovariates, self).__init__(name, model)
+        self.S, self.O = countdata.shape
+        self.S, self.C = metadata.shape
+
+        self.covariates = metadata
+        self.data = countdata.astype(int)
+        #if patients is None:
+        #    patients = np.arange(self.S)
+
+        unique_patients, patient_indexes = np.unique(patients, return_inverse=True)
+        self.n_patients = len(unique_patients)
+        self.patientindexes = patient_indexes
+        self.n = self.data.sum(axis=-1)
+
+        if cauchy:
+            if centered:
+                pm.HalfCauchy('tau', t0)
+            else:
+                t0prior = pm.HalfCauchy('sigma', 1) * t0 # this is basically the noise estimate sigma
+                tau_normal = pm.HalfNormal('tau-normal', 1) * t0prior
+                tau_invGamma = pm.InverseGamma('tau-invGamma', 0.5, 0.5, testval=(0.5/(0.5+1)))
+                pm.Deterministic('tau', tau_normal*tt.sqrt(tau_invGamma))
+        else:
+            pm.HalfNormal('tau', t0)
+
+        if centered:
+            pm.HalfStudentT('lambda', nu=nu, mu=0, shape=(self.C, self.O))
+        else:
+            lamb_normal = pm.HalfNormal('lamb-Normal', 1, shape=(self.C, self.O))
+            lamb_invGamma = pm.InverseGamma('lamb-invGamma', 0.5 * nu, 0.5 * nu, shape=(self.C, self.O), testval=np.full((self.C, self.O), (0.5*nu)/(0.5*nu + 1)))
+            pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
+
+        if centered:
+            pm.Normal('beta', 0, self['lambda']*self.tau, shape=(self.C, self.O))
+        else:
+            z = pm.Normal('z', 0, 1, shape=(self.C, self.O))
+            pm.Deterministic('beta', z*self['lambda']*self.tau)
+
+        pm.Normal('alpha', 0, 10, shape=self.O)
+        deviation = pm.HalfCauchy('sigma_alphas', 5)
+        alpha_offsets = pm.Normal('alpha_offsets', mu=0, sd=1, shape=(self.n_patients, self.O))
+        pm.Deterministic('alphas', alpha_offsets[self.patientindexes]*deviation)
+
+        covariatesRV = pm.Normal('covariates', 0, 1, shape=self.covariates.shape, observed=self.covariates)
+
+        self.intermediate = tt.exp(self.alpha[np.newaxis, :] + tt.dot(covariatesRV, self.beta) + self.alphas)
+        DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
+
 
 
 class SoftmaxRegression(pm.Model):
