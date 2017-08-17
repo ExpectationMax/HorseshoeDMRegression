@@ -3,12 +3,15 @@ import os
 basepath = os.path.dirname(os.path.abspath(__file__))
 
 
-def get_simulated_data(dataname='5O_5C_6p0_5S'):
+def get_simulated_data(dataname='5O_5C_6p0_5S', as_dataframe=False):
     out = {}
-    out['covariates'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'XX.tsv')).values
-    out['counts'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'YY.tsv')).values
-    out['beta'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'betas.tsv')).T.values
-    out['alpha'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'alphas.tsv')).T.values
+    out['covariates'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'XX.tsv'))
+    out['counts'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'YY.tsv'))
+    out['beta'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'betas.tsv')).T
+    out['alpha'] = pd.read_table(os.path.join(basepath, 'simulated', dataname, 'alphas.tsv')).T
+    if not as_dataframe:
+        for name, data in out.items():
+            out[name] = data.values
     out['repetition'] = int(dataname.split('_')[-1][:-1])
     return out
 
