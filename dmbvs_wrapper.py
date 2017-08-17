@@ -31,10 +31,10 @@ def compute_beta_init(countdata, metadata):
 def scale(data):
     return (data - data.mean())/data.std()
 
-
+basepath = os.path.dirname(os.path.abspath(__file__))
 def run_dmbvs(metadata, countdata, GG, thin, burn, output_location, intercept_variance=10, slab_variance=10,
               bb_alpha=0.02, bb_beta=1.98, proposal_alpha = 0.5, proposal_beta = 0.5,
-              executable = os.path.join("lib","dmbvs.x"), r_seed = None, cleanup=True):
+              executable = os.path.join(basepath, "lib","dmbvs.x"), r_seed = None, cleanup=True):
     os.makedirs(output_location, exist_ok=True)
     float_parameters = {'decimal':'.', 'index':False, 'header':False, 'sep':' ', 'float_format':'%.15g'}
     metadata.to_csv(os.path.join(output_location, 'covariates.txt'), **float_parameters)
@@ -76,11 +76,37 @@ def run_dmbvs(metadata, countdata, GG, thin, burn, output_location, intercept_va
     beta = pd.read_table(os.path.join(output_location, 'beta.out'), skipinitialspace=True, index_col=None, header=None, sep='\s+')
     beta_reshaped = beta.values.reshape((-1, notus, ncovariates))
     beta_mean = pd.DataFrame(beta_reshaped.mean(axis=0), index=countdata.columns, columns=metadata.columns)
+    mppip = pd.DataFrame((beta_reshaped != 0).mean(axis=0), index=countdata.columns, columns=metadata.columns)
 
     if cleanup:
         shutil.rmtree(output_location)
 
-    return {'alpha': alpha_mean, 'beta':beta_mean, 'alpha_trace':alpha, 'beta_trace': beta_reshaped, 'rseed': r_seed,
+    return {'alpha': alpha_mean, 'beta':beta_mean, 'MPPI': mppip, 'alpha_trace':alpha, 'beta_trace': beta_reshaped, 'rseed': r_seed,
             'stdout': stdout, 'stderr':stderr}
+
+def run_dmbvs_on_dataset_and_store(dataset, outputpath, GG=500000, burn=250000, thin=100):
+    import pickle
+    from data import get_simulated_data
+
+    data = get_simulated_data(dataset, as_dataframe=True)
+    run_out = os.path.join(outputpath, dataset)
+    dmbvs_tmp = os.path.join(run_out, 'dmbvs_tmp')
+    os.makedirs(dmbvs_tmp, exist_ok=True)
+    results = run_dmbvs(data['covariates'], data['counts'], GG, thin, burn, dmbvs_tmp, cleanup=False)
+    with open(os.path.join(run_out, 'results.pck'), 'wb') as f:
+        pickle.dump(results, f)
+    del results
+
+
+if __name__ == '__main__':
+    import argparse
+    from data import get_available_datasets
+    from joblib import Parallel, delayed
+    parser = argparse.ArgumentParser()
+    parser.add_argument('datasets', nargs='+', choices=get_available_datasets())
+    args = parser.parse_args()
+
+    njobs = len(args.datasets)
+    Parallel(n_jobs=njobs)(delayed(run_dmbvs_on_dataset_and_store)(dataset, 'dmbvs_results') for dataset in args.datasets)
 
 
