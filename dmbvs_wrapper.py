@@ -69,11 +69,21 @@ def run_dmbvs(metadata, countdata, GG, thin, burn, output_location, intercept_va
     stdout, stderr = proc.communicate()
 
     # read results
-    alpha = pd.read_table(os.path.join(output_location, 'alpha.out'), skipinitialspace=True, index_col=None, header=None, sep='\s+')
+    try:
+        alpha = pd.read_table(os.path.join(output_location, 'alpha.out'), skipinitialspace=True, index_col=None, header=None, sep='\s+')
+        beta = pd.read_table(os.path.join(output_location, 'beta.out'), skipinitialspace=True, index_col=None, header=None, sep='\s+')
+    except Exception as e:
+        print('Error reading dmbvs results!')
+        print(e)
+        print('dmbvs stout:')
+        print(stdout)
+        print('dmbvs stderr:')
+        print(stderr)
+        return None
+
     alpha.columns = countdata.columns
     alpha_mean = alpha.mean(axis=0)
 
-    beta = pd.read_table(os.path.join(output_location, 'beta.out'), skipinitialspace=True, index_col=None, header=None, sep='\s+')
     beta_reshaped = beta.values.reshape((-1, notus, ncovariates))
     beta_mean = pd.DataFrame(beta_reshaped.mean(axis=0), index=countdata.columns, columns=metadata.columns)
     mppip = pd.DataFrame((beta_reshaped != 0).mean(axis=0), index=countdata.columns, columns=metadata.columns)
@@ -85,17 +95,22 @@ def run_dmbvs(metadata, countdata, GG, thin, burn, output_location, intercept_va
             'stdout': stdout, 'stderr':stderr}
 
 def run_dmbvs_on_dataset_and_store(dataset, outputpath, GG=500000, burn=250000, thin=100):
+    run_out = os.path.join(outputpath, dataset)
+    dmbvs_tmp = os.path.join(run_out, 'dmbvs_tmp')
+
+    if os.path.exists(os.path.join(run_out, 'results.pck')):
+        return
+
     import pickle
     from data import get_simulated_data
 
     data = get_simulated_data(dataset, as_dataframe=True)
-    run_out = os.path.join(outputpath, dataset)
-    dmbvs_tmp = os.path.join(run_out, 'dmbvs_tmp')
     os.makedirs(dmbvs_tmp, exist_ok=True)
     results = run_dmbvs(data['covariates'], data['counts'], GG, thin, burn, dmbvs_tmp, cleanup=False)
-    with open(os.path.join(run_out, 'results.pck'), 'wb') as f:
-        pickle.dump(results, f)
-    del results
+    if results is not None:
+        with open(os.path.join(run_out, 'results.pck'), 'wb') as f:
+            pickle.dump(results, f)
+        del results
 
 
 if __name__ == '__main__':
