@@ -138,13 +138,13 @@ def split_modelname_into_parameters(data):
 
 dataset_lookup = {}
 def split_datasetname_into_parameters(data):
-    dataset_parameters = ['OTUs', 'Covariates', 'Data p0', 'Samples']
+    dataset_parameters = ['OTUs', 'Covariates', 'Data p0', 'Samples', 'Repetition']
     def split_dataset_name(dataset):
         if dataset in dataset_lookup.keys():
             return dataset_lookup[dataset]
         frags = dataset.split('_')
         ret = pd.Series(index=dataset_parameters,
-                        data=[int(frags[0][:-1]), int(frags[1][:-1]), int(frags[2][:-2]), int(frags[3][:-1])])
+                        data=[int(frags[0][:-1]), int(frags[1][:-1]), int(frags[2][:-2]), int(frags[3][:-1]), int(frags[4][:-1])])
         dataset_lookup[dataset] = ret
         return ret
 
