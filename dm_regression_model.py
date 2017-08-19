@@ -170,9 +170,10 @@ class DMRegressionMixedDP(pm.Model):
         #pm.Normal('alpha', 0, 10, shape=self.O)
         # bounded_gamma = pm.Bound(pm.Gamma, lower=0.01, upper=2.5)
         # alpha = bounded_gamma('alpha', alpha=1, beta=1)
-        weights = pm.Dirichlet('weights', np.ones(DP_components) * alpha, shape=(self.S, DP_components),
+        weights = pm.Dirichlet('weights', pm.floatX(np.ones(DP_components) * alpha), shape=(self.S, DP_components),
                                transform=sensible_stick_breaking)
-        alphas = Mixture('alphas', weights, components, testval=np.zeros((self.S, self.O)), shape=(self.S, self.O))
+
+        alphas = Mixture('alphas', weights, components, shape=(self.S, self.O), testval=pm.floatX(np.zeros((self.S, self.O))))
 
         self.intermediate = tt.exp(alphas + tt.dot(self.covariates, self.beta))
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
