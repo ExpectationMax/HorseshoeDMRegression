@@ -2,7 +2,7 @@ import pymc3 as pm
 import numpy as np
 import theano
 import theano.tensor as tt
-from dirichlet_multinomial import DirichletMultinomial
+from utils.distributions import DirichletMultinomial, Mixture, sensible_stick_breaking
 
 class DMRegressionModel(pm.Model):
     def __init__(self, n_samples, n_covariates, n_otus, t0, nu=3, centered=True, cauchy=True, alpha_init=None,
@@ -121,21 +121,21 @@ class DMRegressionMixed(pm.Model):
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
 
 
+
 class DMRegressionMixedDP(pm.Model):
-    def __init__(self, countdata, metadata, DP_components, t0, nu=3, centered=True, cauchy=True,
+    def __init__(self, countdata, metadata, t0, DP_components, alpha, nu=3, centered=True, cauchy=True,
                  name='', model=None):
-        super(DMRegressionMixed, self).__init__(name, model)
+        super(DMRegressionMixedDP, self).__init__(name, model)
         self.S, self.O = countdata.shape
         self.S, self.C = metadata.shape
 
         self.covariates = metadata
         self.data = countdata.astype(int)
-        #if patients is None:
-        #    patients = np.arange(self.S)
 
         self.DP_components = DP_components
         self.n = self.data.sum(axis=-1)
 
+        # Sparsity inducing prior on regression coefficients
         if cauchy:
             if centered:
                 pm.HalfCauchy('tau', t0)
@@ -159,18 +159,22 @@ class DMRegressionMixedDP(pm.Model):
             z = pm.Normal('z', 0, 1, shape=(self.C, self.O))
             pm.Deterministic('beta', z*self['lambda']*self.tau)
 
-        pm.Normal('alpha', 0, 10, shape=self.O)
+        # DP Prior on Intercepts
 
-        random_effects = pm.Normal('random_effects', 0, 10, shape=(self.DP_components, self.O))
-        mixture_components = pm.Dirichlet('mixture-components', np.ones(self.DP_components), shape=(self.S, self.DP_components))
-        pm.Mixture('mixed', mixture_components, random_effects)
+        components = []
+        for i in range(DP_components):
+            mus = pm.Normal('mu-{}'.format(i), 0, 10, shape=self.O)
+            base_measures = pm.Normal.dist(mus, 2, shape=self.O)
+            components.append(base_measures)
 
-        deviation = pm.HalfCauchy('sigma_alphas', 1)
-        alpha_offsets = pm.Normal('alpha_offsets', mu=0, sd=1, shape=(self.n_patients, self.O))
+        #pm.Normal('alpha', 0, 10, shape=self.O)
+        # bounded_gamma = pm.Bound(pm.Gamma, lower=0.01, upper=2.5)
+        # alpha = bounded_gamma('alpha', alpha=1, beta=1)
+        weights = pm.Dirichlet('weights', np.ones(DP_components) * alpha, shape=(self.S, DP_components),
+                               transform=sensible_stick_breaking)
+        alphas = Mixture('alphas', weights, components, testval=np.zeros((self.S, self.O)), shape=(self.S, self.O))
 
-        pm.Deterministic('alphas', self.alpha[np.newaxis, :] + alpha_offsets[self.patientindexes]*deviation)
-
-        self.intermediate = tt.exp(self.alphas + tt.dot(self.covariates, self.beta))
+        self.intermediate = tt.exp(alphas + tt.dot(self.covariates, self.beta))
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
 
 
@@ -224,7 +228,6 @@ class DMRegressionMixedCovariates(pm.Model):
 
         self.intermediate = tt.exp(self.alpha[np.newaxis, :] + tt.dot(covariatesRV, self.beta) + self.alphas)
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
-
 
 
 class SoftmaxRegression(pm.Model):

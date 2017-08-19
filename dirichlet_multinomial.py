@@ -25,7 +25,6 @@ class DirichletMultinomial(pm.Discrete):
         self.mode = tt.cast(pm.math.tround(self.mean), 'int32')
 
     def logp(self, value):
-        printing = False
         k = self.K
         a = self.alphas
         A = self.A

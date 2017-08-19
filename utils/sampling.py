@@ -53,6 +53,8 @@ def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draw
     elif model_type == 'SoftmaxRegression':
         model = dm_regression_model.SoftmaxRegression(countdata.values, pm.floatX(metadata.values), patients, tau0,
                                                       nu=nu, centered=False)
+    elif model_type == 'DMRegressionDMixed':
+        model = dm_regression_model.DMRegressionMixedDP(countdata.values, pm.floatX(metadata.values), tau0, DP_components=6, alpha=0.6, nu=nu, centered=False)
     else:
         raise ValueError('Model type not correctly specified')
 

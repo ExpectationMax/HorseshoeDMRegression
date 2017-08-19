@@ -80,6 +80,7 @@ def get_cli_parser():
     sampling_group.add_argument('--n_draws', type=int, default=2000)
     sampling_group.add_argument('--seed', type=int, default=-1)
     sampling_group.add_argument('--model_type', default='DMRegression', choices=['DMRegression', 'DMRegressionMixed',
+                                                                                 'DMRegressionDMixed',
                                                                                  'MvNormalDMRegression',
                                                                                  'MvNormalDMRegressionInit',
                                                                                  'SoftmaxRegression'])
