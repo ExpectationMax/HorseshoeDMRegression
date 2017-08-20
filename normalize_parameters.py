@@ -45,7 +45,6 @@ def analyse_run(dataset, model, variables, functions, save_traceplot):
         data = get_simulated_data(dataset)
         trace = get_model_data(dataset, model)
     except Exception as e:
-        failed.append((dataset, model))
         logging.error('Error while processing (Dataset: %s, Model: %s):\n%s', dataset, model, e)
         return None, (dataset, model)
 
@@ -100,11 +99,8 @@ def analyse_run(dataset, model, variables, functions, save_traceplot):
     return result, statistics
 
 
-def create_performance_dataframe(datasets, variables, functions, save_traceplot=True): #derived_variables={}):
-    #result = pd.DataFrame(columns=['Dataset', 'Model', 'Variable', 'Groundtruth', 'Prediction (mean)', 'Prediction (std)'])
-    #statistics = pd.DataFrame(columns=['Dataset', 'Model', 'depth', 'diverging', 'mean_tree_accept', 'step_size', 'tree_size'])
-    failed = []
-    with Parallel(n_jobs=10) as parallel:
+def create_performance_dataframe(datasets, variables, functions, save_traceplot=True):
+    with Parallel(n_jobs=-2) as parallel:
         dataset_model_combinations = []
         for dataset in datasets:
             models = get_sucessful_runs(dataset)
@@ -163,9 +159,11 @@ def compute_ra_performance(dataset, data, model, trace):
          'Prediction (mean)': means.flatten(),
          'Prediction (std)': stds.flatten()})
 
-
 def get_sample_size_from_dataset(dataset):
-    return int(dataset.split('_')[-1][:-1])
+    candidates = [frag for frag in dataset.split('_') if frag[-1] == 'S']
+    assert len(candidates) == 1
+    samplestr = candidates[0]
+    return int(samplestr[:-1])
 
 def compute_pip_values(dataset, data, model, trace):
     pip = compute_pseudo_inclusion_probability(trace, get_sample_size_from_dataset(dataset)).flatten()
@@ -199,7 +197,7 @@ if __name__ == '__main__':
         variable_selected,
         compute_pip_values
     ]
-    failed, res, stats = create_performance_dataframe(get_available_datasets(), ['alpha','beta', 'tau'], functions, save_traceplot=False)
+    failed, res, stats = create_performance_dataframe(get_available_datasets(), ['alpha','beta', 'tau'], functions, save_traceplot=True)
     print('Failed datasets:')
     print(failed)
     _, res_model_details = split_modelname_into_parameters(res['Model'])

@@ -136,7 +136,7 @@ def init_nuts(njobs=1, n_init=200000, model=None,
     cb = [
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='absolute'),
         pm.callbacks.CheckParametersConvergence(tolerance=1e-2, diff='relative'),
-        #EarlyStopping(tolerance=1e-2)
+        EarlyStopping(tolerance=1e-2)
     ]
 
     if start_at_map:
