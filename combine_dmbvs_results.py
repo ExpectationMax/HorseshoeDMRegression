@@ -19,22 +19,21 @@ def read_result(folder, dataset, variables, functions):
     try:
         data = get_simulated_data(dataset, as_dataframe=True)
         modeldata = get_model_data(folder, dataset)
-    except:
+    except Exception as e:
         print('Error reading results form {}'.format(dataset))
+        print(e)
         return None, dataset
 
     result = pd.DataFrame(
         columns=['Dataset', 'Variable', 'Groundtruth', 'Prediction (mean)', 'Prediction (std)'])
 
-    if modeldata['stderr'] != b'':
-        print('Run on dataset {} had output on stderr:'.format(dataset))
-        print(modeldata['stderr'])
-        print('skipping...')
+    if 'Sampling finished!' not in modeldata['stdout'].decode():
+        print('Sampling for dataset {} ended prematurely. Stderr: \n{}\n Skipping...'.format(dataset, modeldata['stderr'].decode()))
         return None, dataset
 
     for var in variables:
         try:
-            n_values = data[var].size
+            n_values = modeldata[var].size
             if var in data.keys():
                 if hasattr(modeldata[var], 'columns'):
                     if data[var].shape[0] != modeldata[var].shape[0]:
@@ -56,8 +55,9 @@ def read_result(folder, dataset, variables, functions):
                      'Prediction (mean)': modeldata[var].values.flatten()})
 
             result = result.append(r, ignore_index=True)
-        except KeyError:
+        except KeyError as e:
             print('Unable to calculate {} for dataset {}.'.format(var, dataset))
+            print(e)
 
     for func in functions:
         try:
