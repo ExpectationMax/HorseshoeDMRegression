@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from data import get_available_datasets, get_simulated_data
 from os.path import exists, join
-from glob import glob
+from normalize_parameters import split_datasetname_into_parameters
 
 def get_model_data(folder, dataset):
     inputfile = join(folder, dataset, 'results.pck')
@@ -25,6 +25,12 @@ def read_result(folder, dataset, variables, functions):
 
     result = pd.DataFrame(
         columns=['Dataset', 'Variable', 'Groundtruth', 'Prediction (mean)', 'Prediction (std)'])
+
+    if modeldata['stderr'] != b'':
+        print('Run on dataset {} had output on stderr:'.format(dataset))
+        print(modeldata['stderr'])
+        print('skipping...')
+        return None, dataset
 
     for var in variables:
         try:
@@ -94,9 +100,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     failed, results = read_results(args.results_folder, args.n_jobs)
+
     print('failed datasets:')
     print(failed)
+
+    _, res_dataset_details = split_datasetname_into_parameters(results['Dataset'])
+    res = pd.concat([res_dataset_details, results], axis=1)
+
     with open(args.output, 'wb') as f:
-        pickle.dump(results, f)
-
-
+        pickle.dump(res, f)
