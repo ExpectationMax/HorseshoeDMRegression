@@ -5,4 +5,7 @@
 .ipynb_checkpoints/
 .idea/
 lib/dmbvs.x
-result_*/
+results_*/
+results/
+dmbvs_results/
+*.pck

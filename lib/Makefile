@@ -3,13 +3,13 @@
 ## file and path names
 ## LIBS and INCS may need to be changed
 INPUT = dmbvs
-LIBS = /opt/local/lib
-INCS = /opt/local/include
+LIBS = /home/labs/elinav/maxh/bayesian_microbiome/own_implementation/HorseshoeDMRegression/lib
+INCS = /home/labs/elinav/maxh/bayesian_microbiome/own_implementation/HorseshoeDMRegression/lib
 
 compile:
-	clang -I$(INCS) -L$(LIBS) -Wall $(INPUT).c -o $(INPUT).x -lgsl -lgslcblas -lm
+	#clang -I$(INCS) -L$(LIBS) -Wall $(INPUT).c -o $(INPUT).x -lgsl -lgslcblas -lm
 	#/local/gcc-5.2.0/bin/gcc -I/local/gsl-2.1/include -L/local/gsl-2.1/lib -Wall $(INPUT).c -o $(INPUT).x -lgsl -lgslcblas -lm
-	#gcc -I$(INCS) -L$(LIBS) -Wall $(INPUT).c -o $(INPUT).x -lgsl -lgslcblas -lm
+	gcc -I$(INCS) -L$(LIBS) -Wall $(INPUT).c -o $(INPUT).x -Wl,-rpath-link,./lib -Wl,-rpath=./lib -lgsl -lgslcblas -lm 
 
 clean:
 	rm -f $(INPUT).x
