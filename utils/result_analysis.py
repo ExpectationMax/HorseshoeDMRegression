@@ -10,12 +10,6 @@ def compute_beta_statistics(trace, dataset):
     sheets = OrderedDict()
     sheets['beta_mean'] = convert_to_df(beta.mean(axis=0))
     sheets['beta_sd'] = convert_to_df(beta.std(axis=0))
-    #percentile_05, percentile_95 = np.percentile(beta, percentiles, axis=0)
-    #sheets['beta_05-percentile'] = convert_to_df(percentile_05)
-    #sheets['beta_95-percentile'] = convert_to_df(percentile_95)
-    #sheets['beta_select_confidence'] = convert_to_df(~((percentile_05 < 0) & (0 < percentile_95)))
-    #sheets['beta_mean-selected'] = sheets['beta_mean'].copy()
-    #sheets['beta_mean-selected'][~sheets['beta_select_confidence']] = 0
     # inclusion probability
     inclusion_probability = convert_to_df(compute_pseudo_inclusion_probability(trace, dataset.S))
     sheets['beta_pip'] = inclusion_probability
@@ -33,6 +27,7 @@ def compute_alpha_statistics(trace, dataset):
     if 'alpha_offsets' in trace.varnames:
         sheets['alpha_offsets'] = convert_to_df(trace['alpha_offsets'].mean(axis=0).T, dataset.patients)
     return sheets
+
 
 def generate_excel_summary(trace, dataset, outputfile):
     # beta trace has shape (#iterations, #covariates, #OTUs)
@@ -66,3 +61,11 @@ def bfdr(inclusion_probabilities, threshold):
         selected = (1 - inclusion_probabilities) < thecut
 
     return selected, 1 - thecut
+
+def compute_ra(alpha, beta, covariates):
+    if len(beta.shape) == 3:
+        res = np.array([np.exp(a + np.dot(covariates, b)) for a, b in zip(alpha, beta)])
+    else:
+        res = np.exp(alpha + np.dot(covariates, beta))
+    return res/res.sum(axis=-1, keepdims=True)
+

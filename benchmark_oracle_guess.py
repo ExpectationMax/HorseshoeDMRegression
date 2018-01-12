@@ -3,28 +3,13 @@ import matplotlib
 matplotlib.use('Agg')
 import pymc3 as pm
 import os
-import math
 import dm_regression_model
 from utils.sampling import compute_tau
 import pickle
 import numpy as np
 from data import get_simulated_data, get_available_datasets
 from itertools import product
-from utils.sampling import init_nuts
 
-def traceplot_with_priors(trace, model):
-    selected_vars = [varname for varname in model.named_vars.keys() if varname in trace.varnames and not varname.endswith('__') and hasattr(model, varname) and hasattr(model[varname], 'distribution')]
-    remove = []
-    for i, var in enumerate(selected_vars):
-        try:
-            model[var].distribution.logp(0).eval()
-        except:
-            remove.append(i)
-
-    for rem in remove[::-1]:
-        selected_vars.pop(rem)
-    print(selected_vars)
-    pm.traceplot(trace, varnames=selected_vars, priors=[model[var].distribution for var in selected_vars])
 
 def run_sampling_with_model(name, model, outputpath, rseed, njobs=1, tune=2000, draws=2000):
     print(name)
@@ -35,15 +20,8 @@ def run_sampling_with_model(name, model, outputpath, rseed, njobs=1, tune=2000, 
         pickle.dump(model, f)
         print('Stored model')
     try:
-        #if name == 'explicit_complete' or name.startswith('explicit_horseshoe'):
-        #    with model:
-        #            start, cov = init_nuts_advi_map(100000, njobs, rseed, model)
-        #            step = pm.NUTS(scaling=cov, is_cov=True, target_accept=0.9)
-        #            trace = pm.sample(draws=draws, tune=tune, start=start, step=step, njobs=njobs)
-        #else:
         with model:
-            start, step = init_nuts(njobs, random_seed=rseed)
-            trace = pm.sample(draws=draws, njobs=njobs, tune=tune, start=start, step=step, random_seed=rseed)
+            trace = pm.sample(draws=draws, njobs=njobs, tune=tune, random_seed=rseed, init='jitter+diag')
 
     except Exception as e:
         print('Error occured:', e)
@@ -57,19 +35,21 @@ def run_sampling_with_model(name, model, outputpath, rseed, njobs=1, tune=2000, 
 if __name__ == '__main__':
     import argparse
     from joblib import Parallel, delayed
-    parser = argparse.ArgumentParser()
-    parser.add_argument('datasets', nargs='+', choices=get_available_datasets())
-    parser.add_argument('--njobs', type=int, default=10)
+    parser = argparse.ArgumentParser(description='Run sampling with and without oracle guess on multiple datasets.')
+    parser.add_argument('datasets', nargs='+', choices=get_available_datasets(), help='Datasets on which sampling should be run.')
+    parser.add_argument('-o', '--output', default='results', type=str, help='Path to store sampling trace.')
+    parser.add_argument('--njobs', type=int, default=10, help='Number of jobs to run in parallel.')
+    parser.add_argument('--rseed', type=int, default=35424353, help='Random seed used for HMC initialization.')
     args = parser.parse_args()
     with Parallel(n_jobs=args.njobs) as parallel:
         for dataset in args.datasets:
-            outputpath = os.path.join('results', dataset)
+            outputpath = os.path.join(args.output, dataset)
             os.makedirs(outputpath, exist_ok=True)
             data = get_simulated_data(dataset)
             S, O = data['counts'].shape
             S, C = data['covariates'].shape
 
-            rseed = 35424353
+            rseed = args.rseed
 
             p0 = (data['beta'] != 0).sum().sum()
             repeat = data['repetition']
@@ -77,17 +57,12 @@ if __name__ == '__main__':
 
             models = {}
 
-            #models['implicit_complete'] = dm_regression_model.DMRegressionModelNonsparseImplicit(S, C, O,
-            #                                                                                     data['counts'],
-            #                                                                                     data['covariates'])
-
             nus = [1]
             centereds = [False]
             cauchys = [True]
             p0s = [p0, -1]
 
             sigma = 1
-            #sigmas = [1, 2, 3]
 
             for nu, centered, cauchy, p0 in product(nus, centereds, cauchys, p0s):
                 name = 'horseshoe_nu{}_{}_{}_p0{}_R{}'.format(nu, 'centered' if centered else 'noncentered', 'cauchy' if cauchy else 'normal', p0, repeat)

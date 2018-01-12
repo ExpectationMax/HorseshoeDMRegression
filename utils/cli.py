@@ -68,13 +68,14 @@ def verify_input_files(countdata, metadata):
 def get_cli_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('countdata', type=tsv_file)
-    parser.add_argument('metadata', type=tsv_file)
-    parser.add_argument('--estimated_covariates', type=int, required=True)
-    parser.add_argument('-o', '--output', required=True)#, type=nonexistant_file)
+    parser.add_argument('countdata', type=tsv_file, help='Read counts associated with individual microbes in tab separated format with layout Samples (rows) x Microbes (columns).')
+    parser.add_argument('metadata', type=tsv_file, help='Covariates associated with samples in tab separated format with layout Samples (rows) x Covariates (columns).')
+    parser.add_argument('--transpose-counts', action='store_false', default=True,
+                        help='Accept read counts in tab separated format with Microbes (rows) x Samples (columns) layout instead.')
+    parser.add_argument('--estimated_covariates', type=int, required=True, help='Guess on number of relevant covariates, provide -1 if no guess should be used (scale of cauchy on tau = 1).')
+    parser.add_argument('-o', '--output', required=True, type=nonexistant_file, help='Directory to store results.')
 
     sampling_group = parser.add_argument_group('Sampling options')
-    sampling_group.add_argument('--init', default='ADVI', choices=['ADVI', 'NUTS'])
     sampling_group.add_argument('--n_chains', type=int, default=4)
     sampling_group.add_argument('--n_tune', type=int, default=2000)
     sampling_group.add_argument('--n_draws', type=int, default=2000)
@@ -82,7 +83,6 @@ def get_cli_parser():
     sampling_group.add_argument('--model_type', default='DMRegression', choices=['DMRegression', 'DMRegressionMixed',
                                                                                  'DMRegressionDMixed',
                                                                                  'MvNormalDMRegression',
-                                                                                 'MvNormalDMRegressionInit',
                                                                                  'SoftmaxRegression'])
 
     output_group = parser.add_argument_group('Output options')
@@ -95,9 +95,9 @@ def get_cli_parser():
 
 def get_parameter_directories(args):
     required_options = {'countdata': args.countdata, 'metadata': args.metadata,
-                        'estimated_covariates': args.estimated_covariates, 'output':args.output}
+                        'estimated_covariates': args.estimated_covariates, 'output':args.output, 'transpose_counts': args.transpose_counts}
     sampling_options = {'n_chains': args.n_chains, 'n_tune':args.n_tune, 'n_draws':args.n_draws, 'seed': args.seed,
-                        'init': args.init, 'model_type': args.model_type}
+                        'model_type': args.model_type}
     output_options = {'traceplot': args.traceplot, 'save_model': args.save_model, 'save_trace':args.save_trace}
     return required_options, sampling_options, output_options
 

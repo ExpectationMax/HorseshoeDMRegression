@@ -3,32 +3,9 @@ import shutil
 import subprocess
 import numpy as np
 import pandas as pd
-from scipy.stats import spearmanr
-from statsmodels.stats.multitest import multipletests
 
+from utils.dmbvs import compute_alpha_init, compute_beta_init
 
-def compute_alpha_init(countdata):
-    return pd.Series(scale(np.log(countdata.sum(axis=0))))
-
-
-def compute_beta_init(countdata, metadata):
-    composition = countdata.div(countdata.sum(axis=1), axis=0)
-    nOTUs = countdata.shape[1]
-    nCovariates = metadata.shape[1]
-    correlations = np.zeros((nOTUs, nCovariates))
-    pvalues = np.zeros((nOTUs, nCovariates))
-    for i in range(nOTUs):
-        for j in range(nCovariates):
-            cor, pval = spearmanr(composition.iloc[:, i], metadata.iloc[:, j])
-            correlations[i, j] = cor
-            pvalues[i, j] = pval
-
-    masking = (multipletests(pvalues.flatten(), method='fdr_bh')[1].reshape(pvalues.shape) <= 0.2).astype(float) + 0
-    beta_init = correlations * masking
-    return pd.DataFrame(beta_init, index=countdata.columns, columns=metadata.columns)
-
-def scale(data):
-    return (data - data.mean())/data.std(ddof=1)
 
 basepath = os.path.dirname(os.path.abspath(__file__))
 def run_dmbvs(metadata, countdata, GG, thin, burn, output_location, intercept_variance=10, slab_variance=10,
@@ -93,6 +70,7 @@ def run_dmbvs(metadata, countdata, GG, thin, burn, output_location, intercept_va
     return {'alpha': alpha_mean, 'beta':beta_mean, 'MPPI': mppip, 'alpha_trace':alpha, 'beta_trace': beta_reshaped, 'rseed': r_seed,
             'stdout': stdout, 'stderr':stderr}
 
+
 def run_dmbvs_on_dataset_and_store(dataset, outputpath, GG=100000, burn=50000, thin=100):
     run_out = os.path.join(outputpath, dataset)
     dmbvs_tmp = os.path.join(run_out, 'dmbvs_tmp')
@@ -116,11 +94,11 @@ if __name__ == '__main__':
     import argparse
     from data import get_available_datasets
     from joblib import Parallel, delayed
-    parser = argparse.ArgumentParser()
-    parser.add_argument('datasets', nargs='+', choices=get_available_datasets())
+    parser = argparse.ArgumentParser(description='Python wrapper for the dmbvs R package (Wadsworth, et al. An Integrative Bayesian Dirichlet-Multinomial Regression Model for the Analysis of Taxonomic Abundances in Microbiome data. (2016))')
+    parser.add_argument('datasets', nargs='+', choices=get_available_datasets(), help='Datasets on which dmbvs should be run')
+    parser.add_argument('-o', '--output', required=True, type=str, help='Output folder for traces generated using dmbvs.')
+    parser.add_argument('--njobs', default=1, type=int, help='Number of dataset to run in parallel.')
     args = parser.parse_args()
 
     njobs = len(args.datasets)
-    Parallel(n_jobs=njobs)(delayed(run_dmbvs_on_dataset_and_store)(dataset, 'dmbvs_results') for dataset in args.datasets)
-
-
+    Parallel(n_jobs=njobs)(delayed(run_dmbvs_on_dataset_and_store)(dataset, args.output) for dataset in args.datasets)
