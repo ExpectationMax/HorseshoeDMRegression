@@ -1,14 +1,11 @@
 import pymc3 as pm
 import numpy as np
 import logging
-from pymc3.step_methods.hmc import quadpotential
-from pymc3.variational.callbacks import Callback
 
 from .data import get_input_specs
-from dmbvs_wrapper import compute_alpha_init, compute_beta_init
 
 
-def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draws, seed, init, model_type):
+def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draws, seed,  model_type):
     import dm_regression_model
 
     O, C, S = get_input_specs(countdata.T, metadata)
@@ -37,9 +34,6 @@ def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draw
                                                               centered=False)
     elif model_type == 'DMRegressionMixed':
         model = dm_regression_model.DMRegressionMixedCovariates(countdata.values, pm.floatX(metadata.values), patients, tau0, nu=nu, centered=False)
-    elif model_type == 'SoftmaxRegression':
-        model = dm_regression_model.SoftmaxRegression(countdata.values, pm.floatX(metadata.values), patients, tau0,
-                                                      nu=nu, centered=False)
     elif model_type == 'DMRegressionDMixed':
         model = dm_regression_model.DMRegressionMixedDP(countdata.values, pm.floatX(metadata.values), pm.floatX(tau0),
                                                         DP_components=6, alpha=pm.floatX(0.6), nu=pm.floatX(nu), centered=False)

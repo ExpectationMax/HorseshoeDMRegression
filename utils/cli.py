@@ -57,7 +57,7 @@ def check_sainity(countdata, metadata):
     O, C, S = get_input_specs(countdata, metadata)
     checker = logging.getLogger('Sainity check')
     if O/S > 1.4:
-        checker.warning('The number of OTUs is significantly higher than the number of samples! Inference might be unstable.')
+        checker.warning('The number of OTUs is significantly higher than the number of samples! Inference will be unstable.')
 
 
 def verify_input_files(countdata, metadata):
@@ -66,29 +66,29 @@ def verify_input_files(countdata, metadata):
 
 
 def get_cli_parser():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Infer covariate effects using a dirichlet multinomial regression model with horseshoe sparsity induction.')
 
     parser.add_argument('countdata', type=tsv_file, help='Read counts associated with individual microbes in tab separated format with layout Samples (rows) x Microbes (columns).')
     parser.add_argument('metadata', type=tsv_file, help='Covariates associated with samples in tab separated format with layout Samples (rows) x Covariates (columns).')
     parser.add_argument('--transpose-counts', action='store_false', default=True,
                         help='Accept read counts in tab separated format with Microbes (rows) x Samples (columns) layout instead.')
-    parser.add_argument('--estimated_covariates', type=int, required=True, help='Guess on number of relevant covariates, provide -1 if no guess should be used (scale of cauchy on tau = 1).')
+    parser.add_argument('--estimated_covariates', type=int, required=False, default=-1, help='Guess on number of relevant covariates, provide -1 if no guess should be used (scale of cauchy on tau = 1).')
     parser.add_argument('-o', '--output', required=True, type=nonexistant_file, help='Directory to store results.')
 
     sampling_group = parser.add_argument_group('Sampling options')
-    sampling_group.add_argument('--n_chains', type=int, default=4)
-    sampling_group.add_argument('--n_tune', type=int, default=2000)
-    sampling_group.add_argument('--n_draws', type=int, default=2000)
-    sampling_group.add_argument('--seed', type=int, default=-1)
+    sampling_group.add_argument('--n_chains', type=int, default=4, help='Number of chains to runn in parallel.')
+    sampling_group.add_argument('--n_tune', type=int, default=1000, help='Number of tuning steps that should be descarded as "burn-in".')
+    sampling_group.add_argument('--n_draws', type=int, default=1000, help='Number of samples to generate after tuning')
+    sampling_group.add_argument('--seed', type=int, default=-1, help='Random seed')
     sampling_group.add_argument('--model_type', default='DMRegression', choices=['DMRegression', 'DMRegressionMixed',
                                                                                  'DMRegressionDMixed',
-                                                                                 'MvNormalDMRegression',
-                                                                                 'SoftmaxRegression'])
+                                                                                 'MvNormalDMRegression'],
+                                help='Model type to use, further details see readme.')
 
     output_group = parser.add_argument_group('Output options')
-    output_group.add_argument('--traceplot', action='store_true', default=False)
-    output_group.add_argument('--save_model', action='store_true', default=False)
-    output_group.add_argument('--save_trace', action='store_true', default=False)
+    output_group.add_argument('--traceplot', action='store_true', default=False, help='Save traveplot of sampling for diagnostics.')
+    output_group.add_argument('--save_model', action='store_true', default=False, help='Save model.')
+    output_group.add_argument('--save_trace', action='store_true', default=False, help='Store trace for later analysis.')
 
     return parser
 

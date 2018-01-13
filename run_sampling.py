@@ -4,14 +4,14 @@ matplotlib.use('Agg')
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-from utils.data import center_and_standardize_columns, extract_taxa_and_covariates, extract_patients_if_present
+from utils.data import center_and_standardize_columns, extract_taxa_and_covariates, Dataset
 from utils.cli import verify_input_files, summarize_inputs, check_sainity, get_cli_parser, get_parameter_directories, \
     setup_logging
 from utils.sampling import run_hmc_sampling
 from utils.result_analysis import generate_excel_summary
 
 
-def generate_outputs(model, trace, taxa, covariates, patients, n_samples, output, traceplot, save_model, save_trace):
+def generate_outputs(model, trace, dataset, output, traceplot, save_model, save_trace):
     import pickle
 
     if save_trace:
@@ -29,12 +29,11 @@ def generate_outputs(model, trace, taxa, covariates, patients, n_samples, output
         plt.savefig(os.path.join(output, 'traceplot.pdf'))
         plt.close('all')
 
-    generate_excel_summary(trace, taxa, covariates, patients, n_samples, os.path.join(output, 'variable_statistics.xlsx'))
+    generate_excel_summary(trace, dataset, os.path.join(output, 'variable_statistics.xlsx'))
 
 
 def run_inference(countdata, metadata, estimated_covariates, output, transpose_counts, sampling_options, output_options):
     setup_logging(output)
-
     if transpose_counts:
         countdata = countdata.T
 
@@ -42,11 +41,10 @@ def run_inference(countdata, metadata, estimated_covariates, output, transpose_c
     summarize_inputs(countdata, metadata, estimated_covariates)
     check_sainity(countdata, metadata)
     countdata = countdata.T # wider used notation (#samples, #features)
-    patients, metadata = extract_patients_if_present(metadata, 'patient')
-    metadata = center_and_standardize_columns(metadata)
-    model, trace = run_hmc_sampling(countdata, metadata, patients, estimated_covariates, **sampling_options)
-    taxa, covariates = extract_taxa_and_covariates(countdata, metadata)
-    generate_outputs(model, trace, taxa, covariates, patients, countdata.shape[0], output, **output_options)
+    dataset = Dataset(countdata, metadata)
+    model, trace = run_hmc_sampling(dataset.countdata, dataset.metadata, dataset.patients, estimated_covariates,
+                                    **sampling_options)
+    generate_outputs(model, trace, dataset, output, **output_options)
 
 
 if __name__ == '__main__':
