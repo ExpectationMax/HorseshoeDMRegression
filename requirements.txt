@@ -6,3 +6,4 @@ numpy==1.13.0
 Theano==0.10.0b4
 pymc3==3.2
 joblib==0.11
+xlsxwriter
