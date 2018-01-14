@@ -23,7 +23,7 @@ Project structure
 │   ├── dmbvs.py                  <-- wrapping functions to call dmbvs
 │   ├── result_analysis.py        <-- computation of summary statistics for traces
 │   ├── resultfile_processing.py  <-- formatting and parsing of result file names
-│   └── sampling.py
+│   └── sampling.py               <-- functions to setup hmc sampling
 │
 ├── README.md                     <-- this file
 ├── analyse_single_trace.py       <-- compute summary statistics and inclusion probabilities
