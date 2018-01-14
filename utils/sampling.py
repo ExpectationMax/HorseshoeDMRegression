@@ -42,7 +42,7 @@ def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draw
 
     try:
         with model:
-            trace = pm.sample(n_draws, tune=n_tune, njobs=n_chains, random_seed=seeds)
+            trace = pm.sample(n_draws, tune=n_tune, njobs=n_chains, random_seed=seeds, init='jitter+adapt_diag')
     except Exception as e:
         sampling_logger.error('Error during initialisation or sampling:')
         sampling_logger.error('%s', e)
@@ -65,4 +65,3 @@ def get_random_seeds(rseed, njobs):
     np.random.seed(rseed)
 
     return rseed, [get_thanoseed() for i in range(njobs)]
-
