@@ -47,9 +47,9 @@ To get started after installing the software, it is required to provide per samp
 Alternatively, the files in the folder `data/simulated` can be used for testing and benchmarking. In this folder simulated simulated datasets of different dimensionality and data availability can be found. The folder names follow the scheme `<#species/OTUs>O_<#covaraites>C_<#covariates relevant>p0_<#samples>S_<replica>R` and contain the files `alphas.tsv` (groundtruth regression intercepts), `betas.tsv` (groundtruth regression coefficients), `YY.tsv` (sample wise read counts of species abundances) and `XX.tsv` (species wise covariate values).
 
 Using the `run_sampling.py` script, the parameters of a statistical model can be inferred using MCMC sampling.
-The resulting trace file, can be used to compute summary statistics and inclusion probabilities of individual covariates using the `analyse_single_trace.py` script.
+This script additionally generates a file with summary statistics and inclusion probabilities of individual covariates.
 
-The detailed usage of these scripts is described below.
+The detailed usage of this script is described below.
 
 
 Installation
@@ -124,3 +124,25 @@ python run_sampling.py data/simulated/40O_10C_20p0_100S_1R/YY.tsv data/simulated
 ```
 
 Running this command will generate three files, `trace.pck` containing sampler statistics and generated samples, `traceplot.pdf` containing histograms of the sampled values for diagnostic purposes and `variable_statistics.xlsx` containing summary statistics of inferred parameters and inclusion probabilities.
+
+Model types
+-----------
+
+ * **DMRegression**: Dirichlet multinomial regression model with horseshoe sparsity induction. Regression coefficients as well as intercepts are estimated jointly for all samples.
+ * **DMRegressionMixed**: Dirichlet multinomial regression model with horseshoe sparsity induction, hierarchical mixed model. Regression coefficients as well as intercepts are estimated jointly. For each patient, additional mixed effects are estimated. Requires additional *patient* column in covariate file to determine repeated measurements form same patient
+ * **DMRegressionDMixed**: Dirichlet multinomial regression model with horseshoe sparsity induction, hierarchical mixed model. Regression coefficients as well as intercepts are estimated jointly. Additional dirichlet clustered random effects are included to in the model, no patient column required. Assumes that certain groups can have distinct microbiome compositions (enterotypes).
+ * **MvNormalDMRegression**: Dirichlet multinomial regression model with horseshoe sparsity induction, intercepts sampled from Multivariate Normal. Regression coefficients are estimated jointly, intercepts are modeled to be independently drawn from a Multivariate Gaussian distribution of which the Covariance matrix and the Mean are estimated jointly for all samples.
+
+
+Additional information
+----------------------
+
+The *analyse_single_trace.py* script, allows to compute summary statistics using a provided model, trace and input data.
+
+The *benchmark_oracle_guess.py* script can be used to run sampling on multiple simulated datasets for performance benchmarking.
+
+The *combine_dmbvs_results.py* and *combine_hmc_results.py* scripts were written to crawl all runs in a path that were either executed using *benchmark_oracle_guess.py* for hmc sampling or *dmbvs_wrapper.py* for the dmbvs algorithm, compute summary statistics of all runs and variables and store these computations in a table format to allow easy comparison of performance benchmarks.
+
+The *dmbvs_wrapper.py* script can be used to run a competitor algorithm (dmbvs) for performance comparison. The script was implemented to remove the requirement of installing `R`.
+
+All scripts give further information on their usage using the command `script.py --help`.
