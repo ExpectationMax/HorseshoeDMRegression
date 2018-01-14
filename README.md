@@ -55,7 +55,7 @@ The detailed usage of this script is described below.
 Requirements
 ------------
 
-This project is written in python 3.4, thus a python interpreter with at least this version should be installed for the software to function.
+This project is written in python 3.6, thus a python interpreter with at least this version should be installed for the software to function.
 The software was tested on UNIX based operating systems (Linux and Mac OS X).
 Although much effort was put into writing platform independent code, due to insufficient testing problems could arise on Windows operating systems.
 
