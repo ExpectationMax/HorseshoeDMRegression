@@ -44,12 +44,20 @@ Getting started
 
 To get started after installing the software, it is required to provide per sample species wise read counts and covariates in a tab separated values file (tsv).
 
-Alternatively, the files in the folder `data/simulated` can be used for testing and benchmarking. In this folder simulated simulated datasets of different dimensionality and data availability can be found. The folder names follow the scheme `<#species/OTUs>O_<#covaraites>C_<#covariates relevant>p0_<#samples>S_<replica>R` and contain the files `alphas.tsv` (groundtruth regression intercepts), `betas.tsv` (groundtruth regression coefficients), `YY.tsv` (sample wise read counts of species abundances) and `XX.tsv` (species wise covariate values).
+Alternatively, the files in the folder `data/simulated` can be used for testing and benchmarking. In this folder simulated simulated datasets of different dimensionality and data availability can be found. The folder names follow the scheme `<#species/OTUs>O_<#covaraites>C_<#covariates relevant>p0_<#samples>S_<replica>R` and contain the files `alphas.tsv` (groundtruth regression intercepts), `betas.tsv` (groundtruth regression coefficients), `YY.tsv` (sample wise read counts of species abundances) and `XX.tsv` (sample wise covariate values).
 
 Using the `run_sampling.py` script, the parameters of a statistical model can be inferred using MCMC sampling.
 This script additionally generates a file with summary statistics and inclusion probabilities of individual covariates.
 
 The detailed usage of this script is described below.
+
+
+Requirements
+------------
+
+This project is written in python 3.4, thus a python interpreter with at least this version should be installed for the software to function.
+The software was tested on UNIX based operating systems (Linux and Mac OS X).
+Although much effort was put into writing platform independent code, due to insufficient testing problems could arise on Windows operating systems.
 
 
 Installation
