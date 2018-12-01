@@ -2,9 +2,9 @@ import os
 import matplotlib
 matplotlib.use('Agg')
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
-from utils.data import center_and_standardize_columns, extract_taxa_and_covariates, Dataset
+from utils.data import Dataset
 from utils.cli import verify_input_files, summarize_inputs, check_sainity, get_cli_parser, get_parameter_directories, \
     setup_logging
 from utils.sampling import run_hmc_sampling
@@ -40,7 +40,7 @@ def run_inference(countdata, metadata, estimated_covariates, output, transpose_c
     verify_input_files(countdata, metadata)
     summarize_inputs(countdata, metadata, estimated_covariates)
     check_sainity(countdata, metadata)
-    countdata = countdata.T # wider used notation (#samples, #features)
+    countdata = countdata.T  # wider used notation (#samples, #features)
     dataset = Dataset(countdata, metadata)
     model, trace = run_hmc_sampling(dataset.countdata, dataset.metadata, dataset.patients, estimated_covariates,
                                     **sampling_options)

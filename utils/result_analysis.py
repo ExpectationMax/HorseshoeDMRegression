@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from collections import OrderedDict
 
+
 def compute_beta_statistics(trace, dataset):
     def convert_to_df(values):
         return pd.DataFrame(data=values, index=dataset.covariates, columns=dataset.taxa).T
@@ -13,7 +14,7 @@ def compute_beta_statistics(trace, dataset):
     # inclusion probability
     inclusion_probability = convert_to_df(compute_pseudo_inclusion_probability(trace, dataset.S))
     sheets['beta_pip'] = inclusion_probability
-    sheets['beta_selected'] = (inclusion_probability > 0.5)*sheets['beta_mean']
+    sheets['beta_selected'] = (inclusion_probability > 0.5) * sheets['beta_mean']
     sheets['lambda'] = convert_to_df(trace['lambda'].mean(axis=0))
     return sheets
 

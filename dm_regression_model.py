@@ -100,7 +100,7 @@ class DMRegressionMVNormalModel(pm.Model):
         if centered:
             pm.Normal('beta', 0, self['lambda'] * self.tau, shape=(self.C, self.O))
         else:
-            z = pm.Normal('z', 0, 1, shape=(self.C, self.O))
+            z = pm.Normal('z_beta', 0, 1, shape=(self.C, self.O))
             pm.Deterministic('beta', z * self['lambda'] * self.tau)
 
         pm.Normal('alpha', 0, 10, shape=self.O)  # this is basically B0
@@ -113,7 +113,6 @@ class DMRegressionMVNormalModel(pm.Model):
 
         self.intermediate = tt.exp(z + tt.dot(self.covariates, self.beta))
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
-
 
 
 class DMRegressionMixed(pm.Model):
