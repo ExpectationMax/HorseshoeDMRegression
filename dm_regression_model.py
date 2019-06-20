@@ -4,9 +4,11 @@ import theano
 import theano.tensor as tt
 from utils.distributions import DirichletMultinomial, Mixture, sensible_stick_breaking
 
+
 class DMRegressionModel(pm.Model):
-    def __init__(self, n_samples, n_covariates, n_otus, t0, nu=3, centered=True, cauchy=True, alpha_init=None,
-                 beta_init=None, name='', model=None):
+    def __init__(self, n_samples, n_covariates, n_otus, t0, nu=3,
+                 centered=True, cauchy=True, alpha_init=None, beta_init=None,
+                 name='', model=None):
         super(DMRegressionModel, self).__init__(name, model)
         self.S = n_samples
         self.C = n_covariates

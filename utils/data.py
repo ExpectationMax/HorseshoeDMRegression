@@ -27,7 +27,7 @@ class Dataset:
     def __init__(self, countdata, metadata, patientcol='patient'):
         self.countdata = countdata
         self.patients, self.metadata = extract_patients_if_present(metadata, patientcol)
-        self.metadata = center_and_standardize_columns(self.metadata)
+        # self.metadata = center_and_standardize_columns(self.metadata)
         self.S, self.O = countdata.shape
         if self.patients is None:
             self.patients = list(range(self.S))
