@@ -16,7 +16,9 @@ def tsv_file(x):
         raise argparse.ArgumentTypeError("{0} does not exist".format(x))
 
     try:
-        data = pd.read_table(x, index_col=0, header=0)
+        data = pd.read_csv(x, header=0, sep='\t', dtype={0: str})
+        # This seems to be the only way to get a string index
+        data.set_index(data.columns[0], drop=True, inplace=True)
     except Exception as e:
         raise argparse.ArgumentTypeError("{} does not seem to be a valid tsv file:\n{}".format(x, e))
 
