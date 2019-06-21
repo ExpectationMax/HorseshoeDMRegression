@@ -15,7 +15,7 @@ def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draw
         tau0 = compute_tau(O, C, S, p0)
 
     sampling_logger = logging.getLogger('Sampling')
-    nu = 1
+    nu = 3
 
     sampling_logger.info(
         'Running sampling with parameters: tau0 = %f, nu = %i, n_chains = %i, n_tune = %i, n_draws = %i',
@@ -45,8 +45,11 @@ def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draw
 
     try:
         with model:
+            # make sure all logp are finite
+            print(model.check_test_point())
             trace = pm.sample(n_draws, tune=n_tune, chains=n_chains,
-                              random_seed=seeds, init='jitter+adapt_diag')
+                              random_seed=seeds, cores=n_chains,
+                              init='jitter+adapt_diag')
     except Exception as e:
         sampling_logger.error('Error during initialisation or sampling:')
         sampling_logger.error('%s', e)
