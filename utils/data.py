@@ -25,12 +25,14 @@ def extract_patients_if_present(metadata, patientcol):
 
 class Dataset:
     def __init__(self, countdata, metadata, patientcol='patient'):
-        self.countdata = countdata
-        self.patients, self.metadata = extract_patients_if_present(metadata, patientcol)
+        patients, metadata = extract_patients_if_present(metadata, patientcol)
         # self.metadata = center_and_standardize_columns(self.metadata)
         self.S, self.O = countdata.shape
-        if self.patients is None:
-            self.patients = list(range(self.S))
+        if patients is None:
+            patients = list(range(self.S))
         _, self.C = metadata.shape
         self.taxa = countdata.columns.tolist()
         self.covariates = metadata.columns.tolist()
+        self.metadata = metadata
+        self.countdata = countdata
+        self.patients = patients

@@ -13,10 +13,14 @@ from utils.result_analysis import generate_excel_summary
 
 def generate_outputs(model, trace, dataset, output, traceplot, save_model, save_trace):
     import pickle
+    import pymc3 as pm
 
     if save_trace:
         with open(os.path.join(output, 'trace.pck'), 'wb') as f:
             pickle.dump(trace, f, pickle.HIGHEST_PROTOCOL)
+
+    summary = pm.summary(trace)
+    summary.to_csv(os.path.join(output, 'diagnostics.csv'))
 
     if save_model:
         with open(os.path.join(output, 'model.pck'), 'wb') as f:
@@ -24,7 +28,6 @@ def generate_outputs(model, trace, dataset, output, traceplot, save_model, save_
 
     if traceplot:
         import matplotlib.pyplot as plt
-        import pymc3 as pm
         pm.traceplot(trace, varnames=['alpha', 'beta', 'tau'])
         plt.savefig(os.path.join(output, 'traceplot.pdf'))
         plt.close('all')
