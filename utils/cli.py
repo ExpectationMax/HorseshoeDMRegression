@@ -84,7 +84,8 @@ def get_cli_parser():
     sampling_group.add_argument('--seed', type=int, default=-1, help='Random seed')
     sampling_group.add_argument('--model_type', default='DMRegression', choices=['DMRegression', 'DMRegressionMixed',
                                                                                  'DMRegressionDMixed',
-                                                                                 'MvNormalDMRegression'],
+                                                                                 'MvNormalDMRegression',
+                                                                                 'MvNormalDiagDMRegression'],
                                 help='Model type to use, further details see readme.')
 
     output_group = parser.add_argument_group('Output options')

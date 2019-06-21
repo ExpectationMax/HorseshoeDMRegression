@@ -117,6 +117,64 @@ class DMRegressionMVNormalModel(pm.Model):
         DirichletMultinomial('counts', self.n, self.intermediate, shape=(self.S, self.O), observed=self.data)
 
 
+class DMRegressionMvNormalDiagModel(pm.Model):
+    def __init__(self, countdata, metadata, t0, nu=3, cauchy=True, name='',
+                 model=None):
+        super().__init__(name, model)
+        self.S, self.O = countdata.shape
+        self.S, self.C = metadata.shape
+        self.covariates = metadata
+        self.data = countdata.astype(np.uint)
+        self.n = self.data.sum(axis=-1)
+
+        if cauchy:
+            tau_normal = pm.HalfNormal('tau-normal', t0)
+            tau_invGamma = pm.InverseGamma(
+                'tau-invGamma',
+                alpha=0.5,
+                beta=0.5,
+                testval=(0.5/(0.5+1))
+            )
+            pm.Deterministic('tau', tau_normal * tt.sqrt(tau_invGamma))
+        else:
+            pm.HalfNormal('tau', t0)
+
+        lamb_normal = pm.HalfNormal(
+            'lamb-Normal',
+            sd=1,
+            shape=(self.C, self.O)
+        )
+        lamb_invGamma = pm.InverseGamma(
+            'lamb-invGamma',
+            alpha=0.5 * nu,
+            beta=0.5 * nu,
+            shape=(self.C, self.O),
+            testval=np.full((self.C, self.O), (0.5*nu)/(0.5*nu + 1))
+        )
+        pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
+
+        z = pm.Normal('z_beta', 0, 1, shape=(self.C, self.O))
+        pm.Deterministic('beta', z * self['lambda'] * self.tau)
+
+        alpha = pm.Normal('alpha', 0, 10, shape=self.O)  # this is basically B0
+
+        sd_dist = pm.HalfCauchy('sigma', beta=2.5, shape=self.O)
+        z_raw = pm.Normal('z_raw', mu=0, sd=1, shape=(self.S, self.O))
+        z = pm.Deterministic(
+            'z',
+            alpha[np.newaxis, :] + z_raw * sd_dist[np.newaxis, :]
+        )
+
+        self.intermediate = tt.exp(z + tt.dot(self.covariates, self.beta))
+        DirichletMultinomial(
+            'counts',
+            self.n,
+            self.intermediate,
+            shape=(self.S, self.O),
+            observed=self.data
+        )
+
+
 class DMRegressionMixed(pm.Model):
     def __init__(self, countdata, metadata, patients, t0, nu=3, centered=True, cauchy=True,
                  name='', model=None):
