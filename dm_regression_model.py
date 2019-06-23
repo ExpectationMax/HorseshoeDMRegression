@@ -157,20 +157,18 @@ class DMRegressionMvNormalDiagModel(pm.Model):
         pm.Deterministic('beta', z * self['lambda'] * self.tau)
 
         alpha = pm.Normal('alpha', 0, 10, shape=self.O)  # this is basically B0
-        # sigma_normal = pm.HalfNormal('sigma-normal', t0, shape=self.O)
-        # sigma_invGamma = pm.InverseGamma(
-        #     'sigma-invGamma',
-        #     alpha=0.5,
-        #     beta=0.5,
-        #     testval=np.full((self.O,), (0.5/(0.5+1))),
-        #     shape=self.O
-        # )
-        # sigma = pm.Deterministic(
-        #     'sigma',
-        #     sigma_normal * tt.sqrt(sigma_invGamma)
-        # )
-
-        sigma = pm.HalfStudentT('sigma', nu=nu, shape=self.O)
+        sigma_normal = pm.HalfNormal('sigma-normal', 1, shape=self.O)
+        sigma_invGamma = pm.InverseGamma(
+            'sigma-invGamma',
+            alpha=0.5*nu,
+            beta=0.5*nu,
+            testval=np.full((self.O,), (0.5*nu/(0.5*nu + 1))),
+            shape=self.O
+        )
+        sigma = pm.Deterministic(
+            'sigma',
+            sigma_normal * tt.sqrt(sigma_invGamma)
+        )
 
         z_raw = pm.Normal('z_raw', mu=0, sd=1, shape=(self.S, self.O))
         z = pm.Deterministic(
