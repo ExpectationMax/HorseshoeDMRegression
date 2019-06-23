@@ -118,8 +118,7 @@ class DMRegressionMVNormalModel(pm.Model):
 
 
 class DMRegressionMvNormalDiagModel(pm.Model):
-    def __init__(self, countdata, metadata, t0, nu=3, cauchy=True, name='',
-                 model=None):
+    def __init__(self, countdata, metadata, t0, nu=3, name='', model=None):
         super().__init__(name, model)
         self.S, self.O = countdata.shape
         self.S, self.C = metadata.shape
@@ -127,20 +126,17 @@ class DMRegressionMvNormalDiagModel(pm.Model):
         self.data = countdata.astype(np.uint)
         self.n = self.data.sum(axis=-1)
 
-        if cauchy:
-            tau_normal = pm.HalfNormal('tau-normal', t0)
-            tau_invGamma = pm.InverseGamma(
-                'tau-invGamma',
-                alpha=0.5,
-                beta=0.5,
-                testval=(0.5/(0.5+1))
-            )
-            pm.Deterministic('tau', tau_normal * tt.sqrt(tau_invGamma))
-        else:
-            pm.HalfNormal('tau', t0)
+        tau_normal = pm.HalfNormal('tau-normal', t0)
+        tau_invGamma = pm.InverseGamma(
+            'tau-invGamma',
+            alpha=0.5 * nu,
+            beta=0.5 * nu,
+            testval=(0.5 * nu)/(0.5 * nu - 1)
+        )
+        pm.Deterministic('tau', tau_normal * tt.sqrt(tau_invGamma))
 
         lamb_normal = pm.HalfNormal(
-            'lamb-Normal',
+            'lamb-normal',
             sd=1,
             shape=(self.C, self.O)
         )
@@ -149,11 +145,11 @@ class DMRegressionMvNormalDiagModel(pm.Model):
             alpha=0.5 * nu,
             beta=0.5 * nu,
             shape=(self.C, self.O),
-            testval=np.full((self.C, self.O), (0.5*nu)/(0.5*nu + 1))
+            testval=np.full((self.C, self.O), (0.5 * nu)/(0.5 * nu - 1))
         )
         pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
 
-        z = pm.Normal('z_beta', 0, 1, shape=(self.C, self.O))
+        z = pm.Normal('beta-normal', 0, 1, shape=(self.C, self.O))
         pm.Deterministic('beta', z * self['lambda'] * self.tau)
 
         alpha = pm.Normal('alpha', 0, 10, shape=self.O)  # this is basically B0
@@ -162,7 +158,7 @@ class DMRegressionMvNormalDiagModel(pm.Model):
             'sigma-invGamma',
             alpha=0.5*nu,
             beta=0.5*nu,
-            testval=np.full((self.O,), (0.5*nu/(0.5*nu + 1))),
+            testval=np.full((self.O,), (0.5 * nu)/(0.5 * nu - 1)),
             shape=self.O
         )
         sigma = pm.Deterministic(
