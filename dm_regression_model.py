@@ -131,7 +131,7 @@ class DMRegressionMvNormalDiagModel(pm.Model):
             'tau-invGamma',
             alpha=0.5 * nu,
             beta=0.5 * nu,
-            testval=(0.5 * nu)/(0.5 * nu - 1)
+            testval=(0.5 * nu)/(0.5 * nu + 1)
         )
         pm.Deterministic('tau', tau_normal * tt.sqrt(tau_invGamma))
 
@@ -145,7 +145,7 @@ class DMRegressionMvNormalDiagModel(pm.Model):
             alpha=0.5 * nu,
             beta=0.5 * nu,
             shape=(self.C, self.O),
-            testval=np.full((self.C, self.O), (0.5 * nu)/(0.5 * nu - 1))
+            testval=np.full((self.C, self.O), (0.5 * nu)/(0.5 * nu + 1))
         )
         pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
 
@@ -158,7 +158,7 @@ class DMRegressionMvNormalDiagModel(pm.Model):
             'sigma-invGamma',
             alpha=0.5*nu,
             beta=0.5*nu,
-            testval=np.full((self.O,), (0.5 * nu)/(0.5 * nu - 1)),
+            testval=np.full((self.O,), (0.5 * nu)/(0.5 * nu + 1)),
             shape=self.O
         )
         sigma = pm.Deterministic(
