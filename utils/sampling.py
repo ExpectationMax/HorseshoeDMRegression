@@ -34,7 +34,7 @@ def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draw
                                                               centered=False)
     elif model_type == 'MvNormalDiagDMRegression':
         model = dm_regression_model.DMRegressionMvNormalDiagModel(
-            countdata.values, pm.floatX(metadata.values), tau0, nu=nu)
+            countdata.values, pm.floatX(metadata.values), patients, tau0, nu=nu)
     elif model_type == 'DMRegressionMixed':
         model = dm_regression_model.DMRegressionMixedCovariates(countdata.values, pm.floatX(metadata.values), patients, tau0, nu=nu, centered=False)
     elif model_type == 'DMRegressionDMixed':

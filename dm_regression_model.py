@@ -118,13 +118,17 @@ class DMRegressionMVNormalModel(pm.Model):
 
 
 class DMRegressionMvNormalDiagModel(pm.Model):
-    def __init__(self, countdata, metadata, t0, nu=3, name='', model=None):
+    def __init__(self, countdata, metadata, patients, t0, nu=3, name='', model=None):
         super().__init__(name, model)
         self.S, self.O = countdata.shape
         self.S, self.C = metadata.shape
         self.covariates = metadata
         self.data = countdata.astype(np.uint)
         self.n = self.data.sum(axis=-1)
+
+        unique_patients, patient_indexes = np.unique(patients, return_inverse=True)
+        self.n_patients = len(unique_patients)
+        self.patientindexes = patient_indexes
 
         tau_normal = pm.HalfNormal('tau-normal', t0)
         tau_invGamma = pm.InverseGamma(
@@ -166,10 +170,11 @@ class DMRegressionMvNormalDiagModel(pm.Model):
             sigma_normal * tt.sqrt(sigma_invGamma)
         )
 
-        z_raw = pm.Normal('z_raw', mu=0, sd=1, shape=(self.S, self.O))
+        z_raw = pm.Normal('z_raw', mu=0, sd=1, shape=(self.n_patients, self.O))
         z = pm.Deterministic(
             'z',
-            alpha[np.newaxis, :] + z_raw * sigma[np.newaxis, :]
+            alpha[np.newaxis, :] +
+            (z_raw[(self.patientindexes,)] * sigma[np.newaxis, :])
         )
 
         self.intermediate = tt.exp(z + tt.dot(self.covariates, self.beta))
