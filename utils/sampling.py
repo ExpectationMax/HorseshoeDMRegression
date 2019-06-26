@@ -15,7 +15,7 @@ def run_hmc_sampling(countdata, metadata, patients, p0, n_chains, n_tune, n_draw
         tau0 = compute_tau(O, C, S, p0)
 
     sampling_logger = logging.getLogger('Sampling')
-    nu = 3
+    nu = 5
 
     sampling_logger.info(
         'Running sampling with parameters: tau0 = %f, nu = %i, n_chains = %i, n_tune = %i, n_draws = %i',

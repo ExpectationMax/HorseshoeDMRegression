@@ -128,30 +128,14 @@ class DMRegressionMvNormalDiagModel(pm.Model):
 
         unique_patients, patient_indexes = np.unique(patients, return_inverse=True)
         self.n_patients = len(unique_patients)
+        print(f'Got {self.n_patients} unique patients')
         self.patientindexes = patient_indexes
 
-        tau_normal = pm.HalfNormal('tau-normal', t0)
-        tau_invGamma = pm.InverseGamma(
-            'tau-invGamma',
-            alpha=0.5 * nu,
-            beta=0.5 * nu,
-            testval=(0.5 * nu)/(0.5 * nu + 1)
-        )
-        pm.Deterministic('tau', tau_normal * tt.sqrt(tau_invGamma))
+        tau_x = pm.Uniform('tau-x_tidle', 0, 1)
+        pm.Deterministic('tau', tt.tan((np.pi/2) * tau_x))
 
-        lamb_normal = pm.HalfNormal(
-            'lamb-normal',
-            sd=1,
-            shape=(self.C, self.O)
-        )
-        lamb_invGamma = pm.InverseGamma(
-            'lamb-invGamma',
-            alpha=0.5 * nu,
-            beta=0.5 * nu,
-            shape=(self.C, self.O),
-            testval=np.full((self.C, self.O), (0.5 * nu)/(0.5 * nu + 1))
-        )
-        pm.Deterministic('lambda', lamb_normal * tt.sqrt(lamb_invGamma))
+        lambda_x = pm.Uniform('lambda-x_tidle', 0, 1, shape=(self.C, self.O))
+        pm.Deterministic('lambda', tt.tan((np.pi/2) * lambda_x))
 
         z = pm.Normal('beta-normal', 0, 1, shape=(self.C, self.O))
         pm.Deterministic('beta', z * self['lambda'] * self.tau)
@@ -171,10 +155,13 @@ class DMRegressionMvNormalDiagModel(pm.Model):
         )
 
         z_raw = pm.Normal('z_raw', mu=0, sd=1, shape=(self.n_patients, self.O))
+        alpha_offsets = pm.Deterministic(
+            'alpha_offsets',
+             z_raw[(self.patientindexes,)] * sigma[np.newaxis, :]
+        )
         z = pm.Deterministic(
             'z',
-            alpha[np.newaxis, :] +
-            (z_raw[(self.patientindexes,)] * sigma[np.newaxis, :])
+            alpha[np.newaxis, :] + alpha_offsets
         )
 
         self.intermediate = tt.exp(z + tt.dot(self.covariates, self.beta))
