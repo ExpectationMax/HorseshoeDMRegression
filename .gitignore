@@ -8,4 +8,5 @@ lib/dmbvs.x
 results_*/
 results/
 dmbvs_results/
+data/biological/
 *.pck

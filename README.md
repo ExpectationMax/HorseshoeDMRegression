@@ -10,7 +10,6 @@ Project structure
 ```
 ├── data
 │   ├── __init__.py
-│   ├── biological                <-- biological datasets
 │   └── simulated                 <-- simulated datasets
 │
 ├── lib                           <-- dmbvs binary location
